@@ -122,9 +122,20 @@ button.pill { cursor: pointer; }
 .planets li { display: grid; grid-template-columns: 1.6rem 1.4rem 1fr auto; align-items: center; gap: 10px; }
 .planets .dot { width: 18px; height: 18px; border-radius: 50%; }
 .planets .sym { font-size: 1.5rem; }
+.tubes { direction: ltr; display: flex; justify-content: center; align-items: flex-start; gap: 14px; height: 186px; padding-top: 8px; border-top: 8px solid #5a3b26; border-radius: 4px; }
+.tubes button { width: 34px; height: calc(var(--len) * 120px); border: 1px solid var(--line); border-top: 10px solid var(--rib); border-radius: 0 0 10px 10px; background: linear-gradient(to right, #7d8590, #e4e7ee 40%, #9aa0aa); cursor: pointer; transform-origin: top center; }
+.tubes button.hit { animation: ring .5s; }
+@keyframes ring { 25% { transform: rotate(4deg); } 60% { transform: rotate(-3deg); } }
+.progress { direction: ltr; display: flex; gap: 8px; justify-content: center; }
+.progress i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); background: var(--well); }
+.progress i.on { background: var(--amber); border-color: var(--amber); }
+.steppers { display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; }
+.stepper { direction: ltr; display: flex; align-items: center; gap: 10px; }
+.stepper button { width: 48px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--key); color: var(--ink); font-size: 1rem; cursor: pointer; }
+.stepper output { min-width: 7.5rem; text-align: center; font-weight: 700; font-size: 1.2rem; color: var(--amber); direction: rtl; }
 .shake { animation: shake .4s; }
 @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
-@media (prefers-reduced-motion: reduce) { .shake { animation: none; } #toast, .btn, #fade { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .shake, .tubes button.hit { animation: none; } #toast, .btn, #fade { transition: none; } }
 </style>
 
 <div id="stage"></div>
@@ -145,9 +156,9 @@ button.pill { cursor: pointer; }
 <div id="intro" class="overlay intro" dir="rtl">
   <div class="wrap">
     <div class="intro-inner">
-      <p class="eyebrow">اتاق فرار در دو پرده</p>
+      <p class="eyebrow">اتاق فرار در سه پرده</p>
       <h1>اتاق ساعت<br>خوابیده</h1>
-      <p class="lede">در را از پشت قفل کرده‌اند. ساعت دیواری از کار افتاده و پشت این اتاق، رصدخانه‌ای تاریک منتظر است. رمزها را پیدا کن و بیرون برو. هر راهنما ۳۰ ثانیه به زمانت اضافه می‌کند.</p>
+      <p class="lede">در را از پشت قفل کرده‌اند. ساعت دیواری از کار افتاده و پشت این اتاق، رصدخانه‌ای تاریک و کارگاه ساعت‌سازی خاموش منتظرند. رمزها را پیدا کن و بیرون برو. هر راهنما ۳۰ ثانیه به زمانت اضافه می‌کند.</p>
       <ul class="controls">
         <li><span class="chip">کشیدن</span> نگاه به اطراف</li>
         <li><span class="chip">کلیک / لمس</span> بررسی اشیا یا راه رفتن روی زمین</li>
@@ -168,7 +179,7 @@ button.pill { cursor: pointer; }
 <div id="win" class="overlay win" dir="rtl" hidden>
   <div class="wrap">
     <div class="intro-inner">
-      <p class="eyebrow" id="winEyebrow">در گاوصندوقی باز شد</p>
+      <p class="eyebrow" id="winEyebrow">ساعت بزرگ بیدار شد</p>
       <h1>آزاد شدی</h1>
       <p class="lede" id="winText"></p>
       <form class="name-form" id="nameForm" hidden>
@@ -202,7 +213,7 @@ const CODES = { safe: '1225', door: '3817', locker: '7294' };
 const PENALTY = 30;
 const REACH = 3, SPEED = 2.6, R = 0.3, EYE = 1.6, H = 3.2;
 const WOOD = 0x7a5236, WOOD_D = 0x5a3b26, GOLD = 0xd9a93e, PAPER = 0xefe3c8;
-const ROOM_NAMES = ['اتاق ۱', 'اتاق ۲'];
+const ROOM_NAMES = ['اتاق ۱', 'اتاق ۲', 'اتاق ۳'];
 const LIGHTS_START = [0, 0, 0, 1, 1, 1, 0, 1, 0];
 const PLANETS = [
   { name: 'عطارد', sym: '☿', col: '#a39a92', r: 12 }, { name: 'زهره', sym: '♀', col: '#e6c88f', r: 18 },
@@ -212,6 +223,15 @@ const PLANETS = [
 ];
 const DIAL = ['☾', '♃', '☿', '♆', '⊕', '♄', '☉', '♀', '♅', '♂'];
 const VAULT = ['♂', '♄', '♀']; // 462: 4th, 6th, 2nd planet
+// tubular bells, in the order they hang (left to right as you face them); shorter tube = higher note
+const BELLS = [
+  { len: 1.2, m: 76, col: '#c0503a' }, { len: 0.7, m: 84, col: '#3f8f4f' }, { len: 1.4, m: 74, col: '#2f5fa8' },
+  { len: 1.0, m: 79, col: '#e0b52c' }, { len: 0.85, m: 81, col: '#8b5cf6' },
+];
+const BY_PITCH = [...BELLS].sort((a, b) => a.len - b.len);
+const MELODY = [79, 81, 84, 81, 79, 76]; // tubes 4 5 2 5 4 1
+const PEN = [25, 50, 75, 100, 125, 150]; // pendulum lengths in cm; 100 swings once per second
+const CLOCK_TIME = [12, 25];             // the moment the first clock stopped
 const MORSE = { 0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.' };
 
 // Morse timeline of the locker code: [lit, seconds]
@@ -232,6 +252,8 @@ const fresh = () => ({
   noteRead: false, painting: false, safe: false, keyTaken: false, chest: false, scrollRead: false, door: false,
   powered: false, board: [...LIGHTS_START], lockerOpen: false, lensTaken: false, lensPlaced: false,
   skySeen: false, paperFound: false, dials: [0, 0, 0], vault: false,
+  letterRead: false, stripSeen: false, caseOpen: false, bobTaken: false, bobPlaced: false,
+  penLen: 1, ticking: false, hands: [7, 50], clockOpen: false,
 });
 let state = fresh();
 let yaw = 0, pitch = -0.05, busy = false;
@@ -293,7 +315,7 @@ const tex = c => new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c
 function seeded(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
 /* ---------- canvas art ---------- */
-function drawClock(g, s) {
+function drawClock(g, s, h = 12, m = 25) {
   const c = s / 2;
   g.clearRect(0, 0, s, s);
   g.fillStyle = '#efe3c8'; g.beginPath(); g.arc(c, c, c * 0.97, 0, Math.PI * 2); g.fill();
@@ -313,9 +335,82 @@ function drawClock(g, s) {
     g.moveTo(c - Math.sin(a) * len * 0.15, c + Math.cos(a) * len * 0.15);
     g.lineTo(c + Math.sin(a) * len, c - Math.cos(a) * len); g.stroke();
   };
-  hand((25 / 60) / 12 * Math.PI * 2, c * 0.42, s * 0.045); // hour hand: 12:25
-  hand(25 / 60 * Math.PI * 2, c * 0.72, s * 0.022);         // minute hand
+  hand((h % 12 + m / 60) / 12 * Math.PI * 2, c * 0.42, s * 0.045); // hour hand (room 1 stopped at 12:25)
+  hand(m / 60 * Math.PI * 2, c * 0.72, s * 0.022);                 // minute hand
   g.fillStyle = '#b8873a'; g.beginPath(); g.arc(c, c, s * 0.03, 0, Math.PI * 2); g.fill();
+}
+// music-box strip: one row per tube (silhouettes on the right, shortest on top), read right to left
+function drawStrip(g, s) {
+  g.fillStyle = '#2a1d14'; g.fillRect(0, 0, s, s);
+  const top = s * 0.26, rowH = s * 0.1, x0 = s * 0.06, x1 = s * 0.94, cut = s * 0.66;
+  g.fillStyle = '#efe3c8'; g.fillRect(x0, top - s * 0.05, x1 - x0, rowH * 5 + s * 0.1);
+  g.fillStyle = '#c9b996';
+  for (let x = x0 + s * 0.03; x < x1; x += s * 0.05) { g.fillRect(x, top - s * 0.035, s * 0.015, s * 0.015); g.fillRect(x, top + rowH * 5 + s * 0.02, s * 0.015, s * 0.015); }
+  g.strokeStyle = 'rgba(58,44,28,.25)'; g.lineWidth = s * 0.003;
+  for (let r = 0; r <= 5; r++) { g.beginPath(); g.moveTo(x0, top + r * rowH); g.lineTo(x1, top + r * rowH); g.stroke(); }
+  g.strokeStyle = 'rgba(58,44,28,.6)'; g.beginPath(); g.moveTo(cut, top); g.lineTo(cut, top + rowH * 5); g.stroke();
+  BY_PITCH.forEach((b, r) => {
+    const y = top + r * rowH + rowH / 2, w = b.len * s * 0.18, xe = x1 - s * 0.03;
+    g.fillStyle = '#7d8590'; g.fillRect(xe - w, y - s * 0.012, w, s * 0.024);
+    g.fillStyle = '#3a2c1c'; g.fillRect(xe - w, y - s * 0.012, s * 0.008, s * 0.024);
+  });
+  MELODY.forEach((m, j) => {
+    const r = BY_PITCH.findIndex(b => b.m === m), x = cut - s * 0.06 - j * s * 0.095;
+    g.fillStyle = '#2a1d14'; g.beginPath(); g.arc(x, top + r * rowH + rowH / 2, s * 0.026, 0, Math.PI * 2); g.fill();
+  });
+  g.strokeStyle = g.fillStyle = '#f2b356'; g.lineWidth = s * 0.008;
+  const ay = s * 0.11;
+  g.beginPath(); g.moveTo(cut - s * 0.04, ay); g.lineTo(x0 + s * 0.06, ay); g.stroke();
+  g.beginPath(); g.moveTo(x0 + s * 0.03, ay); g.lineTo(x0 + s * 0.08, ay - s * 0.03); g.lineTo(x0 + s * 0.08, ay + s * 0.03); g.fill();
+  g.font = `500 ${s * 0.045}px Vazirmatn, Tahoma, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('جهت نواختن', (cut + x1) / 2, ay);
+}
+function drawBlueprint(g, s) {
+  g.fillStyle = '#1d3b6a'; g.fillRect(0, 0, s, s);
+  g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+  for (let i = 1; i < 20; i++) { const p = i * s / 20; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, s); g.moveTo(0, p); g.lineTo(s, p); g.stroke(); }
+  g.fillStyle = g.strokeStyle = '#e8f0ff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `700 ${s * 0.07}px Vazirmatn, Tahoma, sans-serif`; g.fillText('قانون آونگ', s / 2, s * 0.09);
+  const pend = (x, len, top, label, time) => {
+    g.lineWidth = s * 0.006; g.setLineDash([]);
+    g.beginPath(); g.moveTo(x - s * 0.06, top); g.lineTo(x + s * 0.06, top); g.stroke();
+    g.beginPath(); g.moveTo(x, top); g.lineTo(x, top + len); g.stroke();
+    g.beginPath(); g.arc(x, top + len + s * 0.025, s * 0.025, 0, Math.PI * 2); g.fill();
+    g.setLineDash([s * 0.012, s * 0.012]); g.lineWidth = s * 0.003;
+    g.beginPath(); g.arc(x, top, len + s * 0.025, Math.PI / 2 - 0.35, Math.PI / 2 + 0.35); g.stroke();
+    g.setLineDash([]);
+    g.font = `500 ${s * 0.042}px Vazirmatn, Tahoma, sans-serif`;
+    g.fillText(label, x, top + len + s * 0.1); g.fillText(time, x, top + len + s * 0.155);
+  };
+  pend(s * 0.28, s * 0.13, s * 0.2, fa(25) + ' سانتی‌متر', 'هر رفت: نیم ثانیه');
+  pend(s * 0.7, s * 0.52, s * 0.2, '؟ سانتی‌متر', 'هر رفت: یک ثانیه');
+  g.font = `700 ${s * 0.042}px Vazirmatn, Tahoma, sans-serif`;
+  g.fillText('طول چهار برابر شود،', s * 0.28, s * 0.62); g.fillText('زمان دو برابر می‌شود.', s * 0.28, s * 0.68);
+}
+function drawPen(g, s, ang, cm, secs) {
+  g.fillStyle = '#0a0c13'; g.fillRect(0, 0, s, s);
+  const px = s * 0.3, py = s * 0.1, len = cm * s * 0.0047, bx = px + Math.sin(ang) * len, by = py + Math.cos(ang) * len;
+  g.strokeStyle = '#5a3b26'; g.lineWidth = s * 0.02; g.beginPath(); g.moveTo(px - s * 0.1, py); g.lineTo(px + s * 0.1, py); g.stroke();
+  g.strokeStyle = '#b8873a'; g.lineWidth = s * 0.008; g.beginPath(); g.moveTo(px, py); g.lineTo(bx, by); g.stroke();
+  const bob = g.createRadialGradient(bx - s * 0.015, by - s * 0.015, 0, bx, by, s * 0.05);
+  bob.addColorStop(0, '#ffe2a0'); bob.addColorStop(1, '#a8772e');
+  g.fillStyle = bob; g.beginPath(); g.arc(bx, by, s * 0.047, 0, Math.PI * 2); g.fill();
+  const wx = s * 0.77, wy = s * 0.48, wr = s * 0.18;
+  g.fillStyle = '#b8873a'; g.fillRect(wx - s * 0.02, wy - wr - s * 0.06, s * 0.04, s * 0.05);
+  g.beginPath(); g.arc(wx, wy, wr + s * 0.014, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#efe3c8'; g.beginPath(); g.arc(wx, wy, wr, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#3a2c1c';
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2, r1 = wr * (i % 5 ? 0.9 : 0.8);
+    g.lineWidth = i % 5 ? s * 0.002 : s * 0.006;
+    g.beginPath(); g.moveTo(wx + Math.sin(a) * r1, wy - Math.cos(a) * r1); g.lineTo(wx + Math.sin(a) * wr * 0.96, wy - Math.cos(a) * wr * 0.96); g.stroke();
+  }
+  const a = secs / 60 * Math.PI * 2;
+  g.strokeStyle = '#c0392b'; g.lineWidth = s * 0.006; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(wx - Math.sin(a) * wr * 0.15, wy + Math.cos(a) * wr * 0.15); g.lineTo(wx + Math.sin(a) * wr * 0.85, wy - Math.cos(a) * wr * 0.85); g.stroke();
+  g.fillStyle = '#c0392b'; g.beginPath(); g.arc(wx, wy, s * 0.012, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#a6a9bf'; g.font = `500 ${s * 0.04}px Vazirmatn, Tahoma, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('ساعت جیبی', wx, wy + wr + s * 0.07);
 }
 function paintingCanvas() {
   const [c, g] = canvas(512, 384);
@@ -417,6 +512,7 @@ function posterCanvas() {
 const ROOMS = [
   { x0: 0, spawn: { x: 0, z: 1.8 }, colliders: [[-3.35, -1.85, 2.9, 3.7], [2.12, 3.08, 2.9, 3.5], [3.58, 4, -2.32, -0.68], [-3.75, -2.85, -3.75, -2.85]] },
   { x0: 30, spawn: { x: 30, z: 2.6 }, colliders: [[-3.1, -2.3, -0.9, -0.1], [-3.35, -1.85, 2.9, 3.7], [3.48, 4, -2.8, -2.0], [3.55, 4, 1.15, 2.05], [2.5, 3.1, -3.6, -3.0]] },
+  { x0: 60, spawn: { x: 60, z: 2.6 }, colliders: [[-0.6, 0.6, -4, -3.35], [3.0, 4, -0.5, 1.7], [3.3, 4, -3.15, -2.05], [-3.75, -3.05, -2.55, -0.55], [2.85, 3.75, 2.85, 3.75]] },
 ];
 const BOOKS = [
   { id: 'green', name: 'سبز', c: 0x3f8f4f, n: 1, h: 0.36, t: 0.1 },
@@ -428,6 +524,7 @@ const BOOKS = [
 ];
 let hemi, amb, ceil1, painting, safePivot, key, lidPivot, doorPivot, outLight, led;
 let r2main, bulbs2 = [], panelLamps = [], lockerPivot, lens, scopeLens, vaultPivot, outLight2, lanternGlass, lanternLight;
+let ceil3, clockPivot, pend3, faceTex, faceG, casePivot, bob, outLight3, gears3 = [];
 
 function desk(DX, DZ) {
   box(1.5, 0.06, 0.75, WOOD, DX, 0.76, DZ);
@@ -722,10 +819,184 @@ function buildRoom2() {
   lanternLight = new THREE.PointLight(0xff3a2a, 0, 3.5); lanternLight.position.set(2.8, 1.0, -3.3); P.add(lanternLight);
 }
 
+function gear(x, y, z, r, teeth, color, speed) {
+  const g = group(x, y, z), m = mat(color, { metalness: 0.5, roughness: 0.45 });
+  mesh(new THREE.CylinderGeometry(r, r, 0.05, teeth * 2), m, 0, 0, 0, g).rotation.x = Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(r * 0.25, r * 0.25, 0.08, 8), 0x2a2c32, 0, 0, 0, g).rotation.x = Math.PI / 2;
+  for (let i = 0; i < teeth; i++) {
+    const a = i / teeth * Math.PI * 2;
+    box(0.09, 0.07, 0.05, m, Math.cos(a) * (r + 0.03), Math.sin(a) * (r + 0.03), 0, g).rotation.z = a;
+  }
+  for (let i = 0; i < 4; i++) box(r * 1.5, 0.04, 0.06, 0x2a2c32, 0, 0, 0.01, g).rotation.z = i * Math.PI / 4;
+  g.userData.speed = speed; gears3.push(g);
+  return g;
+}
+function drawFace() {
+  drawClock(faceG, 256, ...state.hands);
+  faceTex.needsUpdate = true;
+}
+
+function buildRoom3() {
+  P = group(ROOMS[2].x0, 0, 0, scene);
+  const planks = [0x4f3626, 0x573c2a, 0x4a3223, 0x5c4030].map(c => mat(c));
+  for (let i = 0; i < 16; i++) box(0.5, 0.05, 8, planks[(i * 3) % 4], -3.75 + i * 0.5, -0.025, 0).userData.floor = true;
+  box(3.0, 0.012, 2.2, 0x2f4a44, 0, 0.006, 0.6).userData.floor = true;
+  box(2.6, 0.014, 1.8, 0x3f6a5c, 0, 0.008, 0.6).userData.floor = true;
+  mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.016, 12), 0xc9a26b, 0, 0.012, 0.6).userData.floor = true;
+
+  const WALL = 0x4a3b32, LOW = 0x35291f;
+  walls(WALL, LOW);
+  box(3.8, H, 0.2, WALL, -2.3, H / 2, -4.1); box(3.8, H, 0.2, WALL, 2.3, H / 2, -4.1);
+  box(0.8, H - 2.2, 0.2, WALL, 0, 2.2 + (H - 2.2) / 2, -4.1);
+  box(3.6, 1, 0.03, LOW, -2.2, 0.5, -3.985); box(3.6, 1, 0.03, LOW, 2.2, 0.5, -3.985);
+  box(8.4, 0.2, 8.4, 0x2a221c, 0, H + 0.1, 0);
+  box(8, 0.18, 0.25, 0x3a2a1e, 0, H - 0.09, -1.5); box(8, 0.18, 0.25, 0x3a2a1e, 0, H - 0.09, 1.5);
+
+  // industrial ceiling lamp
+  box(0.02, 0.6, 0.02, 0x1a1a1a, 0, H - 0.3, 0.3);
+  const shade = mesh(new THREE.ConeGeometry(0.35, 0.25, 8, 1, true), mat(0x2c3a34, { side: THREE.DoubleSide, metalness: 0.4 }), 0, H - 0.7, 0.3);
+  const bulb = mesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }), 0, H - 0.8, 0.3);
+  shade.userData.noShadow = bulb.userData.noShadow = true;
+  ceil3 = new THREE.PointLight(0xffcf90, 1.1, 14, 1.4);
+  ceil3.position.set(0, H - 0.9, 0.3);
+  ceil3.shadow.mapSize.set(1024, 1024); ceil3.shadow.bias = -0.004; ceil3.shadow.camera.near = 0.1;
+  P.add(ceil3);
+
+  // entry door (locked behind you)
+  const FRAME = 0x3a2a1e;
+  box(0.12, 2.35, 0.1, FRAME, -0.66, 1.175, 3.97); box(0.12, 2.35, 0.1, FRAME, 0.66, 1.175, 3.97); box(1.44, 0.12, 0.1, FRAME, 0, 2.31, 3.97);
+  const entry = group(0, 0, 3.97);
+  box(1.2, 2.25, 0.06, 0x6a4a32, 0, 1.125, 0, entry);
+  mesh(new THREE.IcosahedronGeometry(0.045, 0), mat(GOLD, { metalness: 0.6 }), -0.45, 1.05, -0.05, entry);
+  interactive(entry, 'entry', 'در ورودی');
+
+  // the grandfather clock is the way out: it swings open like a door
+  const CW = 0x4a2a1a, CWL = 0x6b3d24, gilt = mat(GOLD, { metalness: 0.6, roughness: 0.4 });
+  const glass = () => { const m = mat(0xcfe7f0, { transparent: true, opacity: 0.22, roughness: 0.1, metalness: 0.1 }); return m; };
+  clockPivot = group(-0.48, 0, -3.98);
+  const gc = group(0, 0, 0, clockPivot);
+  box(0.96, 0.4, 0.5, CW, 0.48, 0.2, 0.25, gc);
+  box(1.0, 0.06, 0.52, CWL, 0.48, 0.42, 0.25, gc);
+  const back = box(0.72, 1.3, 0.03, 0x24150d, 0.48, 1.05, 0.035, gc); back.userData.noShadow = true;
+  box(0.03, 1.3, 0.42, CW, 0.135, 1.05, 0.23, gc); box(0.03, 1.3, 0.42, CW, 0.825, 1.05, 0.23, gc);
+  box(0.15, 1.3, 0.03, CW, 0.195, 1.05, 0.425, gc); box(0.15, 1.3, 0.03, CW, 0.765, 1.05, 0.425, gc);
+  box(0.42, 0.15, 0.03, CW, 0.48, 1.625, 0.425, gc); box(0.42, 0.15, 0.03, CW, 0.48, 0.475, 0.425, gc);
+  box(0.42, 1.0, 0.01, glass(), 0.48, 1.05, 0.43, gc).userData.noShadow = true;
+  box(0.92, 0.8, 0.48, CW, 0.48, 2.1, 0.24, gc);
+  box(1.0, 0.08, 0.54, CWL, 0.48, 2.54, 0.25, gc);
+  [0.1, 0.48, 0.86].forEach(x => mesh(new THREE.ConeGeometry(0.05, 0.16, 6), gilt, x, 2.66, 0.25, gc));
+  box(0.62, 0.62, 0.02, 0x2a1a10, 0.48, 2.1, 0.485, gc);
+  mesh(new THREE.TorusGeometry(0.27, 0.025, 4, 16), gilt, 0.48, 2.1, 0.495, gc);
+  let faceC; [faceC, faceG] = canvas(256, 256);
+  faceTex = new THREE.CanvasTexture(faceC);
+  mesh(new THREE.CircleGeometry(0.26, 24), new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.9 }), 0.48, 2.1, 0.497, gc);
+  pend3 = group(0.48, 1.62, 0.24, gc);
+  stick([0, 0, 0], [0, -0.85, 0], 0.008, gilt, pend3);
+  mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 14), gilt, 0, -0.85, 0, pend3).rotation.x = Math.PI / 2;
+  pend3.traverse(o => { o.userData.noShadow = true; });
+  interactive(gc, 'bigclock', 'ساعت ایستاده');
+  mesh(new THREE.PlaneGeometry(2, 3.2), new THREE.MeshBasicMaterial({ color: 0xfff1d6, fog: false }), 0, 1.0, -4.6).userData.noShadow = true;
+  outLight3 = new THREE.PointLight(0xfff0d0, 0, 9); outLight3.position.set(0, 1.4, -3.4); P.add(outLight3);
+
+  // gears on the back wall, still until the clock runs
+  gear(-2.3, 2.35, -3.95, 0.42, 14, 0xb8873a, 0.5);
+  gear(-1.58, 2.6, -3.95, 0.28, 10, 0x8a6a3a, -0.75);
+  gear(2.2, 2.4, -3.95, 0.5, 16, 0x8a6a3a, -0.4);
+  gear(1.48, 2.7, -3.95, 0.22, 8, 0xb8873a, 0.9);
+
+  // workbench along the right wall
+  const W = group(3.5, 0, 0.6);
+  box(0.9, 0.07, 2.2, WOOD, 0, 0.88, 0, W);
+  [[-0.38, -1.0], [0.38, -1.0], [-0.38, 1.0], [0.38, 1.0]].forEach(([a, b]) => box(0.07, 0.85, 0.07, WOOD_D, a, 0.425, b, W));
+  box(0.8, 0.04, 2.0, WOOD_D, 0, 0.25, 0, W);
+  box(0.4, 0.2, 0.5, 0x6a5a48, 0.1, 0.37, -0.5, W);
+  box(0.02, 0.8, 2.0, 0x8a7350, 0.47, 1.5, 0, W);
+  box(0.02, 0.3, 0.05, 0x9aa0aa, 0.45, 1.6, -0.7, W); box(0.02, 0.05, 0.12, 0x9aa0aa, 0.45, 1.77, -0.7, W);
+  stick([0.44, 1.35, -0.3], [0.44, 1.75, -0.3], 0.015, WOOD_D, W); box(0.04, 0.06, 0.14, 0x555b66, 0.44, 1.77, -0.3, W);
+  stick([0.44, 1.4, 0.1], [0.44, 1.8, 0.1], 0.01, 0x9aa0aa, W); stick([0.44, 1.4, 0.2], [0.44, 1.75, 0.2], 0.01, 0x9aa0aa, W);
+  mesh(new THREE.TorusGeometry(0.08, 0.012, 4, 10), 0x9aa0aa, 0.45, 1.55, 0.55, W).rotation.y = Math.PI / 2;
+  box(0.22, 0.14, 0.12, 0x555b66, -0.2, 0.985, -0.85, W); box(0.04, 0.04, 0.3, 0x9aa0aa, -0.2, 0.98, -0.65, W);
+  mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 12), gilt, 0.05, 0.93, -0.25, W);
+  [[0.05, -0.25, 0.07, 9, 0.953], [-0.12, -0.05, 0.05, 7, 0.923], [0.15, 0.1, 0.04, 6, 0.923]].forEach(([x, z, r, n, y]) =>
+    mesh(new THREE.CylinderGeometry(r, r, 0.015, n * 2), mat(GOLD, { metalness: 0.6 }), x, y, z, W));
+  stick([0.25, 0.92, 0.75], [0.15, 1.3, 0.65], 0.012, 0x2a2c32, W);
+  stick([0.15, 1.3, 0.65], [-0.05, 1.32, 0.45], 0.012, 0x2a2c32, W);
+  mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.03, 8), 0x2a2c32, 0.25, 0.92, 0.75, W);
+  mesh(new THREE.TorusGeometry(0.08, 0.015, 4, 12), 0x2a2c32, -0.05, 1.27, 0.45, W).rotation.x = Math.PI / 2;
+  const benchLamp = new THREE.PointLight(0xffc27a, 0.8, 3.5); benchLamp.position.set(3.4, 1.4, 0.9); P.add(benchLamp);
+  const paperM = mat(PAPER);
+  const letter = mesh(new THREE.BoxGeometry(0.21, 0.006, 0.28), [paperM, paperM, tex(noteCanvas()), paperM, paperM, paperM], 3.35, 0.918, 1.3);
+  letter.rotation.y = -0.3;
+  interactive(letter, 'letter', 'نامه');
+
+  // pendulum blueprint pinned to the right wall
+  const bp = group(3.97, 1.75, -1.15);
+  const [bc, bg] = canvas(512, 512); drawBlueprint(bg, 512);
+  mesh(new THREE.PlaneGeometry(0.8, 0.8), tex(bc), -0.02, 0, 0, bp).rotation.y = -Math.PI / 2;
+  [[0.36, 0.36], [0.36, -0.36], [-0.36, 0.36], [-0.36, -0.36]].forEach(([y, z]) => mesh(new THREE.IcosahedronGeometry(0.015, 0), 0xc0392b, -0.03, y, z, bp));
+  interactive(bp, 'blueprint', 'نقشه‌ی آونگ');
+
+  // glass display case holding the pendulum bob
+  const V = group(3.7, 0, -2.6);
+  box(0.6, 0.9, 1.0, WOOD_D, 0, 0.45, 0, V);
+  box(0.62, 0.05, 1.04, WOOD, 0, 1.725, 0, V);
+  box(0.03, 0.8, 1.0, WOOD, 0.28, 1.3, 0, V);
+  box(0.5, 0.02, 0.9, 0x6a1f2a, 0, 0.91, 0, V);
+  [-0.495, 0.495].forEach(z => {
+    box(0.58, 0.8, 0.01, glass(), 0, 1.3, z, V).userData.noShadow = true;
+    box(0.03, 0.8, 0.03, WOOD, -0.29, 1.3, z, V);
+  });
+  casePivot = group(-0.3, 1.3, 0.48, V);
+  box(0.01, 0.76, 0.94, glass(), 0, 0, -0.47, casePivot).userData.noShadow = true;
+  box(0.03, 0.03, 0.96, WOOD, 0, 0.385, -0.48, casePivot); box(0.03, 0.03, 0.96, WOOD, 0, -0.385, -0.48, casePivot);
+  mesh(new THREE.ConeGeometry(0.03, 0.05, 6), gilt, -0.02, 0, -0.9, casePivot);
+  interactive(V, 'vitrine', 'ویترین شیشه‌ای');
+  bob = group(3.72, 1.06, -2.6);
+  stick([0, 0, 0], [0, 0.56, 0], 0.008, gilt, bob);
+  mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 14), gilt, 0, 0, 0, bob).rotation.z = Math.PI / 2;
+  interactive(bob, 'bob', 'وزنه‌ی آونگ');
+
+  // tubular bells on a stand by the left wall
+  const bellsG = group(-3.4, 0, 0);
+  const frameM = mat(WOOD_D);
+  [-2.45, -0.63].forEach(z => { box(0.06, 2.2, 0.06, frameM, 0, 1.1, z, bellsG); box(0.6, 0.05, 0.1, frameM, 0, 0.025, z, bellsG); });
+  box(0.06, 0.06, 1.88, frameM, 0, 2.17, -1.54, bellsG);
+  const steelM = mat(0xc9ccd6, { metalness: 0.75, roughness: 0.3 });
+  BELLS.forEach((b, i) => {
+    const z = -0.88 - i * 0.33;
+    box(0.005, 0.1, 0.005, 0x1a1a1a, 0, 2.09, z, bellsG);
+    mesh(new THREE.CylinderGeometry(0.035, 0.035, b.len, 8), steelM, 0, 2.04 - b.len / 2, z, bellsG);
+    mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.06, 8), parseInt(b.col.slice(1), 16), 0, 1.99, z, bellsG);
+  });
+  stick([0.15, 0.05, -1.0], [0.05, 0.45, -1.15], 0.012, WOOD, bellsG);
+  mesh(new THREE.IcosahedronGeometry(0.035, 0), 0x8a3b3b, 0.05, 0.47, -1.15, bellsG);
+  interactive(bellsG, 'bells', 'زنگوله‌های لوله‌ای');
+
+  // shelf with the music box
+  box(0.36, 0.04, 0.9, WOOD, -3.82, 1.2, 1.5);
+  [1.15, 1.85].forEach(z => box(0.3, 0.12, 0.03, WOOD_D, -3.85, 1.12, z));
+  const mb = group(-3.8, 1.22, 1.45);
+  box(0.24, 0.13, 0.32, 0x6b3a22, 0, 0.065, 0, mb);
+  box(0.245, 0.02, 0.325, gilt, 0, 0.11, 0, mb);
+  mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 8), gilt, 0.02, 0.12, 0, mb).rotation.x = Math.PI / 2;
+  const lidP = group(-0.12, 0.13, 0, mb); lidP.rotation.z = 1.75;
+  box(0.24, 0.025, 0.32, 0x6b3a22, 0.12, 0.0125, 0, lidP);
+  stick([0, 0.06, 0.16], [0, 0.06, 0.24], 0.008, gilt, mb); box(0.015, 0.06, 0.015, gilt, 0, 0.09, 0.24, mb);
+  interactive(mb, 'musicbox', 'جعبه‌ی موسیقی');
+  mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 10), 0x3a2a1e, -3.82, 1.3, 1.82).rotation.z = Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.14, 7), 0x3a8a8a, -3.82, 1.29, 1.12);
+
+  // crate of spare parts
+  box(0.8, 0.6, 0.8, 0x8a6a40, 3.3, 0.3, 3.3);
+  [0.12, 0.3, 0.48].forEach(y => box(0.82, 0.04, 0.82, 0x6b5030, 3.3, y, 3.3));
+  mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 16), mat(GOLD, { metalness: 0.6 }), 3.2, 0.61, 3.25);
+  mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 12), mat(0x8a6a3a, { metalness: 0.6 }), 3.42, 0.63, 3.4);
+}
+
 function build() {
   hemi = new THREE.HemisphereLight(0x8fa6d8, 0x3a2a20, 0.45); scene.add(hemi);
   amb = new THREE.AmbientLight(0x404a66, 0.25); scene.add(amb);
-  buildRoom1(); buildRoom2(); P = scene;
+  buildRoom1(); buildRoom2(); buildRoom3(); P = scene;
   scene.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = !o.userData.noShadow; });
 }
 
@@ -740,6 +1011,8 @@ function makeAnims() {
     { p: 0, target: () => +state.door, apply: p => { doorPivot.rotation.y = -p * 1.5; outLight.intensity = p * 1.6; } },
     { p: 0, target: () => +state.lockerOpen, apply: p => { lockerPivot.rotation.y = p * 1.8; } },
     { p: 0, target: () => +state.vault, apply: p => { vaultPivot.rotation.y = p * 1.6; outLight2.intensity = p * 1.8; } },
+    { p: 0, target: () => +state.caseOpen, apply: p => { casePivot.rotation.y = p * 1.7; } },
+    { p: 0, target: () => +state.clockOpen, apply: p => { clockPivot.rotation.y = -p * 1.35; outLight3.intensity = p * 1.8; } },
   ];
 }
 function setLed(on) { setEm(led, on ? 0x55ff88 : 0xff5544, on ? 0x11aa44 : 0xaa2211); }
@@ -751,13 +1024,17 @@ function updateLights() {
   bulbs2.forEach(b => b.material.color.setHex(state.powered ? 0xffe2a8 : 0x444444));
   panelLamps.forEach((m, i) => setEm(m, state.board[i] ? 0xffc861 : 0x3a3226, state.board[i] ? 0x8a5a10 : 0));
   scopeLens.visible = state.lensPlaced;
+  pend3.visible = state.bobPlaced;
+  if (!state.ticking) pend3.rotation.z = 0;
   ceil1.castShadow = state.room === 0;
+  ceil3.castShadow = state.room === 2;
 }
 function applyState(s) {
   state = { ...fresh(), ...s };
   key.visible = !state.keyTaken;
   lens.visible = !state.lensTaken;
-  setLed(state.door);
+  bob.visible = !state.bobTaken;
+  setLed(state.door); drawFace();
   anims.forEach(a => { a.p = a.target(); a.apply(ease(a.p)); });
   updateInv(); updateTimer(true); updateLights(); updateHintBtn();
 }
@@ -777,8 +1054,10 @@ function updateTimer(force) {
 function updateHintBtn() { $('#hintBtn').textContent = state.hints ? `راهنما (${fa(state.hints)})` : 'راهنما'; }
 const KEY_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#f2b356" stroke-width="3" stroke-linecap="round"><circle cx="11" cy="20" r="6"/><path d="M17 20h18M29 20v6M34 20v5"/></svg>';
 const LENS_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke-width="3"><circle cx="20" cy="20" r="12" stroke="#f2b356"/><circle cx="20" cy="20" r="8" fill="#9fd8ff" fill-opacity=".5" stroke="none"/></svg>';
+const BOB_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#f2b356" stroke-width="3" stroke-linecap="round"><path d="M20 4v18"/><circle cx="20" cy="28" r="8" fill="#f2b356" fill-opacity=".35"/></svg>';
 function updateInv() {
-  const item = state.keyTaken && !state.chest ? ['کلید برنجی', KEY_SVG] : state.lensTaken && !state.lensPlaced ? ['عدسی تلسکوپ', LENS_SVG] : null;
+  const item = state.keyTaken && !state.chest ? ['کلید برنجی', KEY_SVG] : state.lensTaken && !state.lensPlaced ? ['عدسی تلسکوپ', LENS_SVG]
+    : state.bobTaken && !state.bobPlaced ? ['وزنه‌ی آونگ', BOB_SVG] : null;
   slot.innerHTML = item ? item[1] : '';
   slot.classList.toggle('full', !!item);
   slot.title = item ? item[0] : 'کوله خالی است';
@@ -810,6 +1089,11 @@ const click = f => tone(f, 0.07, 'square', 0.03);
 const chime = () => [660, 880, 1320].forEach((f, i) => tone(f, 0.4, 'triangle', 0.07, i * 0.09));
 const buzz = () => tone(140, 0.3, 'sawtooth', 0.05);
 const thunk = () => tone(90, 0.25, 'triangle', 0.14);
+function bell(m, when = 0, vol = 0.09) {
+  const f = midi(m);
+  tone(f, 2.2, 'sine', vol, when); tone(f * 2.76, 0.9, 'sine', vol * 0.3, when); tone(f * 5.4, 0.35, 'sine', vol * 0.12, when);
+}
+const playMelody = () => MELODY.forEach((m, i) => bell(m, 0.15 + i * 0.42));
 
 /* ---------- background music (generated live, one mood per room) ---------- */
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
@@ -817,6 +1101,7 @@ function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 const SONGS = [
   { chords: [[57, 60, 64], [53, 57, 60], [48, 55, 64], [55, 59, 62]], arp: [69, 72, 74, 76, 79, 81] },
   { chords: [[50, 57, 62, 64], [53, 60, 65, 69], [48, 55, 62, 67], [46, 53, 58, 62]], arp: [74, 77, 79, 81, 84, 86] },
+  { chords: [[52, 59, 64, 67], [48, 55, 64, 67], [45, 52, 60, 64], [47, 54, 62, 66]], arp: [76, 79, 81, 83, 86, 88] },
 ];
 const BAR = 4.8;
 const music = { on: lsGet('sleeping-clock-music') !== false, out: null, in: null, next: 0, bar: 0, timer: null };
@@ -867,6 +1152,7 @@ document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? 
 /* ---------- leaderboard: shared through the page's database, or this device only ---------- */
 const LS_SCORES = 'sleeping-clock-scores', LS_PLAYER = 'sleeping-clock-player', LS_NAME = 'sleeping-clock-name';
 const API = '/api/scores';
+const WIN_EYEBROW = 'ساعت بزرگ بیدار شد';
 const board = { mode: 'local', loading: false, rows: lsGet(LS_SCORES) || [], db: null, user: null, me: null, player: null, pending: null, newBest: false, note: '' };
 const num = v => Math.max(0, Number(v) || 0);
 const clean = r => ({ id: r.id, name: typeof r.name === 'string' ? r.name : '', mine: r.mine === true, score: num(r.score), hints: num(r.hints), at: num(r.at) });
@@ -911,7 +1197,7 @@ async function sendName(e) {
     Object.assign(board, { pending: null, rows: data.rows.map(clean), newBest: !!data.newBest });
     board.note = board.newBest ? '' : 'رکورد قبلی‌ات بهتر بود و همان در جدول ماند.';
     $('#nameForm').hidden = true;
-    $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : 'در گاوصندوقی باز شد';
+    $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : WIN_EYEBROW;
     renderBoards();
   } catch (err) {
     msg.textContent = err.status === 429 ? 'چند لحظه بعد دوباره امتحان کن.'
@@ -963,7 +1249,7 @@ async function submitScore(run) {
     board.rows = merged;
     board.newBest = run.score < prevLocal;
   }
-  $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : 'در گاوصندوقی باز شد';
+  $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : WIN_EYEBROW;
   renderBoards();
 }
 async function renderBoards() {
@@ -998,17 +1284,17 @@ async function renderBoards() {
 
 /* ---------- modals ---------- */
 const modal = $('#modal'), sheet = $('#sheet');
-let modalOpen = false, kp = null, morseToken = null;
+let modalOpen = false, kp = null, loopToken = null;
 function openModal(html) {
   sheet.innerHTML = html + '<button class="btn ghost" type="button" data-close>بستن</button>';
   modal.hidden = false; modalOpen = true;
   walk = pending = null; keys.clear(); setHover(null);
   sheet.focus();
 }
-function closeModal() { modal.hidden = true; modalOpen = false; kp = null; morseToken = null; }
+function closeModal() { modal.hidden = true; modalOpen = false; kp = null; loopToken = null; }
 modal.addEventListener('click', e => {
   if (e.target === modal || e.target.closest('[data-close]')) return closeModal();
-  const t = e.target.closest('[data-k],[data-cell],[data-reset],[data-dial],[data-pull]');
+  const t = e.target.closest('[data-k],[data-cell],[data-reset],[data-dial],[data-pull],[data-bell],[data-step],[data-fix],[data-strike]');
   if (!t) return;
   const d = t.dataset;
   if (d.k) kpPress(d.k);
@@ -1016,6 +1302,10 @@ modal.addEventListener('click', e => {
   else if ('reset' in d) resetLights();
   else if (d.dial) turnDial(+d.dial, +d.dir);
   else if ('pull' in d) pullLever();
+  else if (d.bell) ringBell(+d.bell);
+  else if (d.step) stepValue(d.step, +d.dir);
+  else if ('fix' in d) fixPendulum();
+  else if ('strike' in d) strike();
 });
 
 const NOTE = `<div class="paper">
@@ -1033,6 +1323,11 @@ const RIDDLE = `<h2>کاغذ زیر ساعت شنی</h2><div class="paper">
   <p>عددی سه‌رقمی را در نظر بگیر: رقم صدگانش دو برابر رقم یکان است، رقم دهگانش برابر مجموع آن دو، و جمع هر سه رقم ۱۲ می‌شود.</p>
   <p>هر رقم، شماره‌ی خانه‌ی یک سیاره از خورشید است. قفل بزرگ فقط زبان سیاره‌ها را می‌فهمد؛ نمادها را به همان ترتیبی بچین که عدد نوشته می‌شود.</p>
   <p class="sign">م.</p></div>`;
+const LETTER = `<h2>نامه‌ی ساعت‌ساز</h2><div class="paper">
+  <p>تا اینجا آمدی؟ پس رمزهایم را خوب خوانده‌ای.</p>
+  <p>این کارگاه من است و آن ساعت ایستاده‌ی ته اتاق، تنها راه بیرون. از روزی که رفتم خوابیده: آونگش را در ویترین گذاشتم و قفل ویترین را به آهنگ جعبه‌ی موسیقی سپردم.</p>
+  <p>آونگ را طوری ببند که هر رفتش درست یک ثانیه طول بکشد. بعد عقربه‌ها را به لحظه‌ای برگردان که اولین ساعت این خانه خوابید، و بگذار زنگ بزند.</p>
+  <p class="sign">م. ساعت‌ساز</p></div>`;
 
 function openCanvas(title, size, draw, caption) {
   openModal(`<h2>${title}</h2><canvas class="view" width="${size}" height="${size}"></canvas><p class="caption">${caption}</p>`);
@@ -1082,7 +1377,7 @@ function unlock(target) {
   thunk();
   if (target === 'safe') { state.safe = true; toast('در گاوصندوق باز شد. چیزی داخلش برق می‌زند.'); }
   else if (target === 'locker') { state.lockerOpen = true; toast('در کمد باز شد.'); }
-  else { state.door = true; setLed(true); busy = true; setTimeout(toRoom2, 1500); }
+  else { state.door = true; setLed(true); busy = true; setTimeout(() => toRoom(1), 1500); }
 }
 
 // power panel: each switch flips itself and its orthogonal neighbours
@@ -1112,10 +1407,10 @@ function resetLights() { if (state.powered) return; state.board = [...LIGHTS_STA
 
 function openMorse() {
   openModal('<h2>فانوس علامت</h2><div class="beacon" id="beacon"></div><p class="caption">فانوس پیامی را بارها و بارها تکرار می‌کند.</p>');
-  const token = morseToken = {};
+  const token = loopToken = {};
   let last = -1;
   const tick = () => {
-    if (morseToken !== token) return;
+    if (loopToken !== token) return;
     const i = morseAt(performance.now() / 1000);
     if (i !== last) {
       last = i;
@@ -1144,18 +1439,124 @@ function pullLever() {
   if (state.vault) return;
   if (state.dials.every((v, i) => DIAL[v] === VAULT[i])) {
     state.vault = true; busy = true;
-    succeed($('#vMsg'), 'چرخ‌دنده‌ها چرخیدند…', () => { thunk(); setTimeout(win, 1800); });
+    succeed($('#vMsg'), 'چرخ‌دنده‌ها چرخیدند…', () => { thunk(); setTimeout(() => toRoom(2), 1800); });
   } else fail($('#vMsg'), $('#dials'), 'اهرم تکان نخورد.');
 }
 
+// tubular bells: play the music-box melody to unlock the display case
+let bellSeq = [];
+function openBells() {
+  bellSeq = [];
+  openModal(`<h2>زنگوله‌های لوله‌ای</h2><p class="sub">${state.caseOpen ? 'ویترین باز است، اما هنوز می‌توانی بنوازی.' : 'لوله‌ها را بزن. شاید آهنگی چیزی را باز کند.'}</p>
+    <div class="tubes">${BELLS.map((b, i) => `<button type="button" data-bell="${i}" aria-label="لوله‌ی ${fa(i + 1)}" style="--len:${b.len};--rib:${b.col}"></button>`).join('')}</div>
+    <div class="progress" id="bProg">${'<i></i>'.repeat(MELODY.length)}</div><p class="kp-msg" id="bMsg"></p>`);
+}
+function ringBell(i) {
+  const b = BELLS[i], btn = sheet.querySelector(`[data-bell="${i}"]`);
+  bell(b.m);
+  btn.classList.remove('hit'); void btn.offsetWidth; btn.classList.add('hit');
+  if (state.caseOpen) return;
+  const seq = [...bellSeq, b.m];
+  while (seq.length && seq.some((m, k) => m !== MELODY[k])) seq.shift(); // keep the longest tail that starts the melody
+  bellSeq = seq;
+  $('#bProg').querySelectorAll('i').forEach((dot, k) => dot.classList.toggle('on', k < seq.length));
+  if (seq.length === MELODY.length) {
+    state.caseOpen = true; bellSeq = [];
+    succeed($('#bMsg'), 'قفل ویترین تق صدا کرد!', () => { thunk(); toast('در ویترین شیشه‌ای باز شد.'); });
+  }
+}
+
+// pendulum: change its length until each swing lands on a tick of the pocket watch
+let penClock = null;
+function stepLabel(id) {
+  if (id === 'pen') return fa(PEN[state.penLen]) + ' سانتی‌متر';
+  return id === 'h' ? 'ساعت ' + fa(state.hands[0]) : 'دقیقه ' + fa(String(state.hands[1]).padStart(2, '0'));
+}
+const stepper = (id, less, more) => `<div class="stepper">
+  <button type="button" data-step="${id}" data-dir="-1" aria-label="${less}">◀</button>
+  <output id="out-${id}">${stepLabel(id)}</output>
+  <button type="button" data-step="${id}" data-dir="1" aria-label="${more}">▶</button></div>`;
+function openPendulum() {
+  openModal(`<h2>آونگ ساعت بزرگ</h2><p class="sub">طول آونگ را عوض کن تا هر رفتش با یک تیک ساعت جیبی هم‌زمان شود، بعد محکمش کن.</p>
+    <canvas class="view" id="penCv" width="600" height="600"></canvas>
+    <div class="steppers">${stepper('pen', 'کوتاه‌تر', 'بلندتر')}</div>
+    <p class="kp-msg" id="pMsg"></p><button class="btn" type="button" data-fix style="align-self:center">محکم کن</button>`);
+  penClock = { t0: performance.now(), secs: 0 };
+  penLoop();
+}
+function penLoop() {
+  const token = loopToken = {}, g = $('#penCv').getContext('2d');
+  let lastSwing = -1, lastSec = -1;
+  const tick = () => {
+    if (loopToken !== token) return;
+    const cm = PEN[state.penLen], half = Math.sqrt(cm / 100), t = (performance.now() - penClock.t0) / 1000;
+    const sw = Math.floor(t / half), sec = Math.floor(t);
+    if (sw !== lastSwing) { lastSwing = sw; tone(330, 0.09, 'triangle', 0.09); }
+    if (sec !== lastSec) { lastSec = sec; tone(1700, 0.03, 'square', 0.025); }
+    drawPen(g, 600, 0.32 * Math.cos(Math.PI * t / half), cm, penClock.secs + sec);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function fixPendulum() {
+  if (state.ticking) return;
+  const cm = PEN[state.penLen];
+  if (cm === 100) {
+    state.ticking = true;
+    succeed($('#pMsg'), 'تیک… تاک…', () => { updateLights(); thunk(); toast('ساعت بزرگ بیدار شد و تیک‌تاک می‌کند. حالا عقربه‌هایش را میزان کن.', 5500); });
+  } else fail($('#pMsg'), $('#penCv'), cm < 100 ? 'آونگ از ثانیه‌ها تندتر می‌زند؛ ساعت جلو می‌افتد.' : 'آونگ از ثانیه‌ها کندتر می‌زند؛ ساعت عقب می‌افتد.');
+}
+
+// clock hands: set the moment the first clock fell asleep, then let it strike
+function openHands() {
+  openModal(`<h2>عقربه‌های ساعت بزرگ</h2><p class="sub">عقربه‌ها را بچرخان و بگذار ساعت زنگ بزند.</p>
+    <canvas class="view" id="handCv" width="600" height="600"></canvas>
+    <div class="steppers">${stepper('h', 'ساعت قبلی', 'ساعت بعدی')}${stepper('m', 'پنج دقیقه عقب', 'پنج دقیقه جلو')}</div>
+    <p class="kp-msg" id="hMsg"></p><button class="btn" type="button" data-strike style="align-self:center">زنگ بزن</button>`);
+  drawClock($('#handCv').getContext('2d'), 600, ...state.hands);
+}
+function stepValue(id, dir) {
+  if (id === 'pen') {
+    if (state.ticking) return;
+    state.penLen = Math.max(0, Math.min(PEN.length - 1, state.penLen + dir));
+    const now = performance.now();
+    penClock = { t0: now, secs: penClock.secs + Math.floor((now - penClock.t0) / 1000) }; // release the bob again
+    $('#pMsg').textContent = ''; penLoop();
+  } else {
+    if (state.clockOpen) return;
+    const [h, m] = state.hands;
+    state.hands = id === 'h' ? [(h - 1 + dir + 12) % 12 + 1, m] : [h, (m + dir * 5 + 60) % 60];
+    drawClock($('#handCv').getContext('2d'), 600, ...state.hands); drawFace();
+    $('#hMsg').textContent = '';
+  }
+  click(id === 'pen' ? 260 : 420);
+  $('#out-' + id).textContent = stepLabel(id);
+}
+function strike() {
+  if (state.clockOpen) return;
+  if (state.hands.every((v, i) => v === CLOCK_TIME[i])) {
+    state.clockOpen = true; busy = true;
+    playMelody();
+    succeed($('#hMsg'), 'دنگ… دنگ…', () => { [0, 1, 2].forEach(i => bell(52, 2.4 + i * 0.8, 0.16)); setTimeout(win, 3200); });
+  } else {
+    bell(52, 0, 0.14);
+    fail($('#hMsg'), $('#handCv'), 'ساعت یک بار زنگ زد، اما چیزی تکان نخورد.');
+  }
+}
+
 /* ---------- rooms & progress ---------- */
-function toRoom2() {
+const ROOM_TOASTS = [
+  '',
+  'اتاق دوم: رصدخانه‌ی متروک. در پشت سرت قفل شد و برق هم قطع است.',
+  'اتاق سوم: کارگاه ساعت‌ساز. ساعت ایستاده‌ی ته اتاق خاموش است و هیچ تیک‌تاکی شنیده نمی‌شود.',
+];
+function toRoom(n) {
   $('#fade').dataset.on = '1';
   setTimeout(() => {
-    state.room = 1; enter();
+    state.room = n; enter();
     updateLights(); updateTimer(true);
     $('#fade').removeAttribute('data-on'); busy = false;
-    toast('اتاق دوم: رصدخانه‌ی متروک. در پشت سرت قفل شد و برق هم قطع است.', 5500);
+    toast(ROOM_TOASTS[n], 5500);
   }, 900);
 }
 function act(id) {
@@ -1208,6 +1609,27 @@ function act(id) {
       state.paperFound = true; return openModal(RIDDLE);
     case 'poster': return openPoster();
     case 'vault': return state.vault ? null : openVault();
+    // room 3
+    case 'letter': state.letterRead = true; return openModal(LETTER);
+    case 'musicbox':
+      state.stripSeen = true; playMelody();
+      return openCanvas('نوار جعبه‌ی موسیقی', 600, drawStrip, 'جعبه‌ی موسیقی آهنگ کوتاهی می‌نوازد. سوراخ‌های نوار همان آهنگ‌اند.');
+    case 'blueprint': return openCanvas('نقشه‌ی آونگ', 600, drawBlueprint, 'نقشه‌ای کهنه که به دیوار سنجاق شده.');
+    case 'bells': return openBells();
+    case 'vitrine':
+      if (state.caseOpen) return toast(state.bobTaken ? 'ویترین خالی است.' : 'در ویترین باز است. وزنه‌ی آونگ داخلش آویزان است.');
+      return toast('ویترین شیشه‌ای قفل است. روی قفلش یک زنگوله‌ی کوچک حک شده.');
+    case 'bob':
+      state.bobTaken = true; bob.visible = false; updateInv(); chime();
+      return toast('وزنه‌ی آونگ را برداشتی.');
+    case 'bigclock':
+      if (state.clockOpen) return;
+      if (state.ticking) return openHands();
+      if (!state.bobPlaced) {
+        if (!state.bobTaken) return toast('ساعت ایستاده خاموش است. پشت شیشه‌اش جای آونگ خالی است.');
+        state.bobPlaced = true; updateInv(); updateLights(); thunk();
+      }
+      return openPendulum();
   }
 }
 
@@ -1225,6 +1647,12 @@ const HINTS = {
   scope: ['عدسی مال تلسکوپ کنار پنجره است. با آن به آسمان نگاه کن.'],
   paper: ['ستاره‌ها شکل یکی از اشیای همین اتاق را کشیده‌اند.', 'صورت فلکی شکل ساعت شنی است. ساعت شنی روی کمد کنار دیوار راست را بردار.'],
   vault: ['عدد معما را پیدا کن. هر رقمش شماره‌ی یک سیاره در پوستر منظومه‌ی شمسی است.', 'عدد ۴۶۲ است: مریخ ♂، زحل ♄، زهره ♀.'],
+  letter: ['روی میز کار کنار دیوار راست یک نامه هست. بخوانش.'],
+  strip: ['جعبه‌ی موسیقی روی طاقچه‌ی دیوار چپ را باز کن و نوارش را ببین.'],
+  bells: ['هر ردیف نوار مال یک لوله است: طول لوله‌ها را با شکل‌های کنار نوار مقایسه کن و سوراخ‌ها را از راست به چپ بزن.', 'لوله‌ها را از چپ به راست ۱ تا ۵ بشمار و به این ترتیب بزن: ۴، ۵، ۲، ۵، ۴، ۱.'],
+  bob: ['در ویترین شیشه‌ای باز است. وزنه‌ی آونگ را بردار.'],
+  pendulum: ['وزنه را به ساعت ایستاده ببر و طول آونگ را آن‌قدر عوض کن تا هر رفتش با یک تیک ساعت جیبی هم‌زمان شود.', 'نقشه‌ی روی دیوار می‌گوید آونگ ۲۵ سانتی هر رفت را در نیم ثانیه می‌زند؛ برای یک ثانیه طول باید ۱۰۰ سانتی‌متر باشد.'],
+  time: ['نامه می‌گوید عقربه‌ها را به لحظه‌ای برگردان که اولین ساعت این خانه خوابید: ساعت دیواری اتاق اول.', 'عقربه‌ها را روی ۱۲:۲۵ بگذار و زنگ را بزن.'],
 };
 function step() {
   const s = state;
@@ -1232,8 +1660,12 @@ function step() {
     if (!s.noteRead) return 'note'; if (!s.painting) return 'painting'; if (!s.safe) return 'safe';
     if (!s.keyTaken) return 'key'; if (!s.chest) return 'chest'; if (!s.scrollRead) return 'scroll'; return 'door';
   }
-  if (!s.powered) return 'power'; if (!s.lockerOpen) return 'locker'; if (!s.lensTaken) return 'lens';
-  if (!s.skySeen) return 'scope'; if (!s.paperFound) return 'paper'; return 'vault';
+  if (s.room === 1) {
+    if (!s.powered) return 'power'; if (!s.lockerOpen) return 'locker'; if (!s.lensTaken) return 'lens';
+    if (!s.skySeen) return 'scope'; if (!s.paperFound) return 'paper'; return 'vault';
+  }
+  if (!s.letterRead) return 'letter'; if (!s.stripSeen) return 'strip'; if (!s.caseOpen) return 'bells';
+  if (!s.bobTaken) return 'bob'; if (!s.ticking) return 'pendulum'; return 'time';
 }
 function hint() {
   const k = step(), list = HINTS[k], n = state.hintsSeen[k] || 0, isNew = n < list.length;
@@ -1356,7 +1788,7 @@ function move(dt) {
 
 /* ---------- loop ---------- */
 const timer = new THREE.Clock();
-let lanternOn = -1;
+let lanternOn = -1, tickSec = -1;
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(timer.getDelta(), 0.05);
@@ -1371,6 +1803,12 @@ function frame() {
     lanternOn = lit;
     setEm(lanternGlass, lit ? 0xff5a40 : 0x8a2a20, lit ? 0xff3020 : 0x220500);
     lanternLight.intensity = lit ? 1.3 : 0;
+  }
+  if (state.ticking) {
+    const now = performance.now() / 1000, sec = Math.floor(now);
+    pend3.rotation.z = 0.13 * Math.cos(Math.PI * now);
+    for (const g of gears3) g.rotation.z += dt * g.userData.speed;
+    if (sec !== tickSec) { tickSec = sec; if (state.room === 2 && state.started && !state.won) tone(sec % 2 ? 1300 : 1000, 0.04, 'square', 0.012); }
   }
   camera.rotation.set(pitch, yaw, 0);
   renderer.render(scene, camera);
@@ -1412,8 +1850,9 @@ async function start(data) {
     enter(data.view);
     setMusic(music.on);
     if (saved.won) win(true);
-    else if (saved.vault) { busy = true; setTimeout(win, 600); }
-    else if (saved.door && saved.room === 0) { busy = true; setTimeout(toRoom2, 600); }
+    else if (saved.clockOpen) { busy = true; setTimeout(win, 600); }
+    else if (saved.vault && saved.room === 1) { busy = true; setTimeout(() => toRoom(2), 600); }
+    else if (saved.door && saved.room === 0) { busy = true; setTimeout(() => toRoom(1), 600); }
   }
   initBoard();
   frame();
