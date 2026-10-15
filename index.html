@@ -142,6 +142,22 @@ button.pill { cursor: pointer; }
 .mirrors { width: 100%; max-width: 320px; align-self: center; touch-action: manipulation; }
 .mirrors [data-mirror] { cursor: pointer; outline: none; }
 .mirrors [data-mirror]:focus-visible rect { stroke: var(--amber); stroke-width: .06; }
+.chess { direction: ltr; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: min(100%, 320px); aspect-ratio: 1; align-self: center; border: 6px solid #5a3b26; border-radius: 4px; }
+.chess.tour { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); aspect-ratio: 4 / 3; width: min(100%, 280px); }
+.chess button { min-width: 0; min-height: 0; overflow: hidden; border: 0; padding: 0; position: relative; display: grid; place-items: center; cursor: pointer; font-family: var(--symbols); font-size: clamp(1.25rem, 6vw, 1.8rem); line-height: 1; }
+.chess .l { background: #e8d3b0; }
+.chess .d { background: #a7764d; }
+.chess .w { color: #fffaf0; text-shadow: 0 0 2px #000, 0 0 1px #000; }
+.chess .b { color: #1b1714; }
+.chess .fx { color: #f2b356; text-shadow: 0 0 2px #2a1a08, 0 0 1px #2a1a08; }
+.chess .sel { box-shadow: inset 0 0 0 3px #f2b356; }
+.chess .bad { background: #d9655a; }
+.chess .go::after { content: ''; width: 22%; aspect-ratio: 1; border-radius: 50%; background: rgba(42, 26, 8, .45); }
+.chess .n { font-family: var(--body); font-size: 1.05rem; font-weight: 700; color: #3a2c1c; }
+.chess small { position: absolute; font-family: var(--body); font-size: .55rem; line-height: 1; color: rgba(42, 26, 8, .6); }
+.chess small.rk { top: 2px; left: 3px; }
+.chess small.fl { bottom: 2px; right: 3px; }
+.pieces { font-family: var(--symbols); font-size: 2rem; letter-spacing: .15em; margin: 0; text-align: center; }
 .levers { direction: ltr; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .levers .btn { align-self: auto; }
 .shake { animation: shake .4s; }
@@ -167,9 +183,9 @@ button.pill { cursor: pointer; }
 <div id="intro" class="overlay intro" dir="rtl">
   <div class="wrap">
     <div class="intro-inner">
-      <p class="eyebrow">اتاق فرار در چهار پرده</p>
+      <p class="eyebrow">اتاق فرار در پنج پرده</p>
       <h1>اتاق ساعت<br>خوابیده</h1>
-      <p class="lede">در را از پشت قفل کرده‌اند. ساعت دیواری از کار افتاده و پشت این اتاق، رصدخانه‌ای تاریک، کارگاه ساعت‌سازی خاموش و برج ساعت شهر منتظرند. رمزها را پیدا کن و بیرون برو. هر راهنما ۳۰ ثانیه به زمانت اضافه می‌کند.</p>
+      <p class="lede">در را از پشت قفل کرده‌اند. ساعت دیواری از کار افتاده و پشت این اتاق، رصدخانه‌ای تاریک، کارگاه ساعت‌سازی خاموش، برج ساعت شهر و اتاق شطرنجِ م. منتظرند. رمزها را پیدا کن و بیرون برو. هر راهنما ۳۰ ثانیه به زمانت اضافه می‌کند.</p>
       <ul class="controls">
         <li><span class="chip">کشیدن</span> نگاه به اطراف</li>
         <li><span class="chip">کلیک / لمس</span> بررسی اشیا یا راه رفتن روی زمین</li>
@@ -193,7 +209,7 @@ button.pill { cursor: pointer; }
 <div id="win" class="overlay win" dir="rtl" hidden>
   <div class="wrap">
     <div class="intro-inner">
-      <p class="eyebrow" id="winEyebrow">در بالکن برج باز شد</p>
+      <p class="eyebrow" id="winEyebrow">کیش و مات؛ آخرین در باز شد</p>
       <h1>آزاد شدی</h1>
       <p class="lede" id="winText"></p>
       <form class="name-form" id="nameForm" hidden>
@@ -223,11 +239,11 @@ const $ = s => document.querySelector(s);
 const FA = '۰۱۲۳۴۵۶۷۸۹';
 const fa = v => String(v).replace(/[0-9]/g, d => FA[d]);
 const fmt = sec => fa(String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0'));
-const CODES = { safe: '1225', door: '3817', locker: '7294', balcony: '0720' };
+const CODES = { safe: '1225', door: '3817', locker: '7294', balcony: '0720', chess: '1915' };
 const PENALTY = 30;
 const REACH = 3, SPEED = 2.6, R = 0.3, EYE = 1.6, H = 3.2;
 const WOOD = 0x7a5236, WOOD_D = 0x5a3b26, GOLD = 0xd9a93e, PAPER = 0xefe3c8;
-const ROOM_NAMES = ['اتاق ۱', 'اتاق ۲', 'اتاق ۳', 'اتاق ۴'];
+const ROOM_NAMES = ['اتاق ۱', 'اتاق ۲', 'اتاق ۳', 'اتاق ۴', 'اتاق ۵'];
 const LIGHTS_START = [0, 0, 0, 1, 1, 1, 0, 1, 0];
 const PLANETS = [
   { name: 'عطارد', sym: '☿', col: '#a39a92', r: 12 }, { name: 'زهره', sym: '♀', col: '#e6c88f', r: 18 },
@@ -254,6 +270,24 @@ const MIRRORS_START = [1, 1, 1, 1, 0, 0, 1]; // 0 is '/', 1 is '\'; the only ans
 const LEVERS = [[0, 1], [1, 2], [0, 2]];     // rings each lever turns (0 outer, 1 middle, 2 inner)
 const RINGS_START = [3, 4, 5];               // eighths of a turn; solved by levers 1, 2, 3 pulled 3, 1, 2 times
 const TOWER_TIME = [7, 20];                  // what the town sees; from behind the face it reads 4:40
+// room 5, chess. Checked with python-chess: Nf7# is the only mate; the 3x4 board has two tours from the
+// top-left corner; with queens on a8 and e7 the eight-queens puzzle has exactly one completion.
+const MATE_FEN = 'r5rk/pp4pp/2p5/6N1/3q4/1P6/P3QPPP/3R2K1', MATE_MOVE = ['g5', 'f7'];
+const TOUR_START = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];  // visit order on the 3x4 board, row by row
+const QUEENS_FIXED = ['a8', 'e7'], QUEENS_SOLUTION = ['a8', 'e7', 'h6', 'f5', 'c4', 'g3', 'b2', 'd1'];
+const CAPTURED = { white: ['q', 'r', 'n', 'p', 'p'], black: ['r', 'b', 'b', 'n', 'p'] }; // 19 and 15
+const PIECE_NAMES = { k: 'شاه', q: 'وزیر', r: 'رخ', b: 'فیل', n: 'اسب', p: 'پیاده' };
+const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+const GLYPHS = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+const glyph = (t, outline) => String.fromCharCode(GLYPHS[t].charCodeAt(0) - (outline ? 6 : 0)) + '\uFE0E'; // text, not emoji
+const sqIndex = sq => (8 - Number(sq[1])) * 8 + 'abcdefgh'.indexOf(sq[0]);
+const sqName = i => 'abcdefgh'[i % 8] + (8 - Math.floor(i / 8));
+function parseFen(fen) {
+  const b = [];
+  fen.split('/').forEach(row => [...row].forEach(ch => { if (/\d/.test(ch)) for (let k = 0; k < +ch; k++) b.push(''); else b.push(ch); }));
+  return b;
+}
+const MATE_BOARD = parseFen(MATE_FEN);
 const MORSE = { 0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.' };
 
 // Morse timeline of the locker code: [lit, seconds]
@@ -278,6 +312,8 @@ const fresh = () => ({
   penLen: 1, ticking: false, hands: [7, 50], clockOpen: false,
   diaryRead: false, rings: [...RINGS_START], drawerOpen: false, matchesTaken: false, lampLit: false,
   mirrors: [...MIRRORS_START], faceLit: false, faceSeen: false, balcony: false,
+  sheetRead: false, mateDone: false, knightTaken: false, knightPlaced: false, tour: [...TOUR_START], tourDone: false,
+  queens: Array(64).fill(0), queensDone: false, trophiesSeen: false, chessDoor: false,
 });
 let state = fresh();
 let yaw = 0, pitch = -0.05, busy = false;
@@ -540,6 +576,8 @@ const ROOMS = [
   { x0: 30, spawn: { x: 30, z: 2.6 }, colliders: [[-3.1, -2.3, -0.9, -0.1], [-3.35, -1.85, 2.9, 3.7], [3.48, 4, -2.8, -2.0], [3.55, 4, 1.15, 2.05], [2.5, 3.1, -3.6, -3.0]] },
   { x0: 60, spawn: { x: 60, z: 2.6 }, colliders: [[-0.6, 0.6, -4, -3.35], [3.0, 4, -0.5, 1.7], [3.3, 4, -3.15, -2.05], [-3.75, -3.05, -2.55, -0.55], [2.85, 3.75, 2.85, 3.75]] },
   { x0: 90, spawn: { x: 90, z: 2.6 }, colliders: [[1.85, 2.55, 0.1, 0.95], [-3.05, -1.75, -1.6, -0.8], [2.85, 3.75, 2.85, 3.75], [-3.85, -3.35, 1.4, 2.6]] },
+  // a fifth entry names the state flag that switches a collider on (the queens table rises out of the floor)
+  { x0: 120, spawn: { x: 120, z: 2.6 }, colliders: [[-2.95, -0.65, 0.1, 1.15], [3.35, 4, 0.95, 2.25], [1.05, 1.75, -1.15, -0.45, 'tourDone'], [-3.75, -2.85, -3.75, -2.85], [2.85, 3.75, 2.85, 3.75]] },
 ];
 const BOOKS = [
   { id: 'green', name: 'سبز', c: 0x3f8f4f, n: 1, h: 0.36, t: 0.1 },
@@ -552,6 +590,7 @@ const BOOKS = [
 let hemi, amb, ceil1, painting, safePivot, key, lidPivot, doorPivot, outLight, led;
 let r2main, bulbs2 = [], panelLamps = [], lockerPivot, lens, scopeLens, vaultPivot, outLight2, lanternGlass, lanternLight;
 let ceil3, clockPivot, pend3, faceTex, faceG, casePivot, bob, outLight3, gears3 = [];
+let ceil5, drawer5, knight5, mateKnight5, tourTiles5 = [], tourKnight5, pedestal5, queens5 = [], curtain5, chessDoorPivot, outLight5, led5;
 let towerFace, ceil4, drawer4, matches4, lampFlame, lampLight4, beam4, faceMesh4, faceLight4, balconyPivot, outLight4, led4;
 
 function desk(DX, DZ) {
@@ -1165,10 +1204,198 @@ function buildRoom4() {
   box(0.8, 0.6, 0.8, 0x8a6a40, 3.3, 0.3, 3.3); box(0.5, 0.4, 0.5, 0x7a5a36, 3.25, 0.8, 3.3);
 }
 
+// a low-poly chess piece about 1.3 units tall
+function chessPiece(type, white, x, y, z, s, parent = P) {
+  const g = group(x, y, z, parent), m = mat(white ? 0xefe6d2 : 0x2a2622, { roughness: 0.5 });
+  g.scale.setScalar(s);
+  mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.14, 10), m, 0, 0.07, 0, g);
+  mesh(new THREE.CylinderGeometry(0.2, 0.34, 0.5, 10), m, 0, 0.39, 0, g);
+  mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.06, 10), m, 0, 0.66, 0, g);
+  if (type === 'p') mesh(new THREE.IcosahedronGeometry(0.22, 1), m, 0, 0.86, 0, g);
+  else if (type === 'r') {
+    mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.32, 10), m, 0, 0.85, 0, g);
+    for (let i = 0; i < 4; i++) box(0.12, 0.12, 0.12, m, Math.cos(i * Math.PI / 2) * 0.2, 1.07, Math.sin(i * Math.PI / 2) * 0.2, g);
+  } else if (type === 'n') {
+    box(0.26, 0.5, 0.3, m, -0.04, 0.92, 0, g).rotation.z = -0.3;
+    box(0.42, 0.2, 0.26, m, 0.1, 1.08, 0, g).rotation.z = -0.35;
+    mesh(new THREE.ConeGeometry(0.06, 0.14, 4), m, -0.1, 1.24, 0.07, g); mesh(new THREE.ConeGeometry(0.06, 0.14, 4), m, -0.1, 1.24, -0.07, g);
+  } else if (type === 'b') {
+    mesh(new THREE.SphereGeometry(0.2, 8, 6), m, 0, 0.92, 0, g).scale.y = 1.5;
+    mesh(new THREE.IcosahedronGeometry(0.06, 0), m, 0, 1.25, 0, g);
+  } else if (type === 'q') {
+    mesh(new THREE.CylinderGeometry(0.3, 0.18, 0.36, 10), m, 0, 0.87, 0, g);
+    for (let i = 0; i < 8; i++) mesh(new THREE.IcosahedronGeometry(0.05, 0), m, Math.cos(i * Math.PI / 4) * 0.27, 1.07, Math.sin(i * Math.PI / 4) * 0.27, g);
+    mesh(new THREE.IcosahedronGeometry(0.09, 0), m, 0, 1.12, 0, g);
+  } else {
+    mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.4, 10), m, 0, 0.89, 0, g);
+    box(0.07, 0.3, 0.07, m, 0, 1.22, 0, g); box(0.22, 0.07, 0.07, m, 0, 1.24, 0, g);
+  }
+  return g;
+}
+function boardCanvas() {
+  const [c, g] = canvas(256, 256);
+  for (let i = 0; i < 64; i++) { g.fillStyle = (i + Math.floor(i / 8)) % 2 ? '#a7764d' : '#e8d3b0'; g.fillRect((i % 8) * 32, Math.floor(i / 8) * 32, 32, 32); }
+  return c;
+}
+function drawValues(g, s) {
+  g.fillStyle = '#efe3c8'; g.fillRect(0, 0, s, s);
+  g.strokeStyle = '#3a2c1c'; g.lineWidth = s * 0.015; g.strokeRect(s * 0.04, s * 0.04, s * 0.92, s * 0.92);
+  g.fillStyle = '#3a2c1c'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `400 ${s * 0.09}px Lalezar, Vazirmatn, Tahoma, sans-serif`; g.fillText('ارزش مهره‌ها', s / 2, s * 0.14);
+  ['p', 'n', 'b', 'r', 'q', 'k'].forEach((t, i) => {
+    const y = s * (0.29 + i * 0.12);
+    g.font = `${s * 0.085}px "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", sans-serif`; g.fillText(glyph(t), s * 0.78, y);
+    g.font = `500 ${s * 0.06}px Vazirmatn, Tahoma, sans-serif`; g.fillText(PIECE_NAMES[t], s * 0.56, y);
+    g.font = `700 ${s * 0.065}px Vazirmatn, Tahoma, sans-serif`; g.fillText(t === 'k' ? 'بی‌بها' : fa(PIECE_VALUES[t]), s * 0.25, y);
+  });
+}
+// table-top squares: index 0 is a8 at the far side, rank 1 faces the room
+const sq3 = (i, size) => [(i % 8 - 3.5) * size, (Math.floor(i / 8) - 3.5) * size];
+
+function buildRoom5() {
+  P = group(ROOMS[4].x0, 0, 0, scene);
+  const light = mat(0xd8c3a0), dark = mat(0x5a3b2a);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) box(1, 0.05, 1, (i + j) % 2 ? dark : light, -3.5 + i, -0.025, -3.5 + j).userData.floor = true;
+
+  const WALL = 0x2e3b33, LOW = 0x22302a, gilt = mat(GOLD, { metalness: 0.6, roughness: 0.4 });
+  walls(WALL, LOW);
+  box(3.6, H, 0.2, WALL, -2.4, H / 2, -4.1); box(3.6, H, 0.2, WALL, 2.4, H / 2, -4.1);
+  box(1.2, H - 2.25, 0.2, WALL, 0, 2.25 + (H - 2.25) / 2, -4.1);
+  box(3.4, 1, 0.03, LOW, -2.3, 0.5, -3.985); box(3.4, 1, 0.03, LOW, 2.3, 0.5, -3.985);
+  box(8.4, 0.2, 8.4, 0x231d18, 0, H + 0.1, 0);
+  box(0.25, 0.18, 8, 0x3a2a1e, -2, H - 0.09, 0); box(0.25, 0.18, 8, 0x3a2a1e, 2, H - 0.09, 0);
+
+  // chandelier
+  box(0.02, 0.6, 0.02, 0x1a1a1a, 0, H - 0.3, 0.3);
+  mesh(new THREE.TorusGeometry(0.45, 0.03, 4, 12), gilt, 0, H - 0.62, 0.3).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2;
+    mesh(new THREE.IcosahedronGeometry(0.05, 0), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), Math.cos(a) * 0.45, H - 0.56, 0.3 + Math.sin(a) * 0.45).userData.noShadow = true;
+  }
+  ceil5 = new THREE.PointLight(0xffe0b0, 1.1, 14, 1.4);
+  ceil5.position.set(0, H - 0.8, 0.3);
+  ceil5.shadow.mapSize.set(1024, 1024); ceil5.shadow.bias = -0.004; ceil5.shadow.camera.near = 0.1;
+  P.add(ceil5);
+
+  // the door you came through
+  const FRAME = 0x3a2a1e;
+  box(0.12, 2.35, 0.1, FRAME, -0.66, 1.175, 3.97); box(0.12, 2.35, 0.1, FRAME, 0.66, 1.175, 3.97); box(1.44, 0.12, 0.1, FRAME, 0, 2.31, 3.97);
+  const entry = group(0, 0, 3.97);
+  box(1.2, 2.25, 0.06, 0x4a3a2e, 0, 1.125, 0, entry);
+  mesh(new THREE.IcosahedronGeometry(0.045, 0), gilt, -0.45, 1.05, -0.05, entry);
+  interactive(entry, 'entry', 'در ورودی');
+
+  // exit door with keypad
+  box(0.12, 2.35, 0.1, FRAME, -0.66, 1.175, -3.97); box(0.12, 2.35, 0.1, FRAME, 0.66, 1.175, -3.97); box(1.44, 0.12, 0.1, FRAME, 0, 2.31, -3.97);
+  chessDoorPivot = group(-0.6, 0, -4.04);
+  const door = group(0, 0, 0, chessDoorPivot);
+  box(1.2, 2.25, 0.08, 0x2a2622, 0.6, 1.125, 0, door);
+  box(0.8, 0.7, 0.02, 0xefe6d2, 0.6, 1.65, 0.05, door); box(0.8, 0.7, 0.02, 0xefe6d2, 0.6, 0.7, 0.05, door);
+  chessPiece('k', false, 0.6, 1.4, 0.07, 0.3, door).rotation.x = Math.PI / 2;
+  mesh(new THREE.IcosahedronGeometry(0.045, 0), gilt, 1.05, 1.05, 0.08, door);
+  interactive(door, 'chessdoor', 'در خروج');
+  mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: 0xfff3d6, fog: false }), 0, 1.6, -4.6).userData.noShadow = true;
+  outLight5 = new THREE.PointLight(0xfff0d0, 0, 9); outLight5.position.set(0, 1.4, -3.6); P.add(outLight5);
+  const pad = group(0.98, 1.3, -3.97);
+  box(0.22, 0.32, 0.04, 0x22252e, 0, 0, 0, pad);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) box(0.045, 0.04, 0.015, 0xb9bccb, (c - 1) * 0.06, 0.07 - r * 0.055, 0.025, pad);
+  led5 = box(0.05, 0.02, 0.015, mat(0xff5544, { emissive: 0xaa2211 }), 0, 0.13, 0.025, pad);
+  interactive(pad, 'chesspad', 'صفحه‌کلید در');
+
+  // chess table with the unfinished game, a chess clock and the scoresheet
+  const T = group(-1.8, 0, 0.6);
+  box(1.2, 0.05, 0.9, WOOD_D, 0, 0.74, 0, T);
+  box(1.1, 0.1, 0.8, WOOD, 0, 0.66, 0, T);
+  [[-0.5, -0.35], [0.5, -0.35], [-0.5, 0.35], [0.5, 0.35]].forEach(([a, b]) => box(0.07, 0.62, 0.07, WOOD_D, a, 0.31, b, T));
+  const tb = group(-0.15, 0.766, 0, T);
+  mesh(new THREE.PlaneGeometry(0.72, 0.72), tex(boardCanvas()), 0, 0.001, 0, tb).rotation.x = -Math.PI / 2;
+  box(0.78, 0.02, 0.78, 0x3a2414, 0, -0.008, 0, tb);
+  MATE_BOARD.forEach((pc, i) => {
+    if (!pc) return;
+    const [x, z] = sq3(i, 0.09), piece = chessPiece(pc.toLowerCase(), pc === pc.toUpperCase(), x, 0, z, 0.06, tb);
+    if (pc === 'N') mateKnight5 = piece;
+  });
+  interactive(tb, 'chesstable', 'بازی نیمه‌تمام');
+  const clock = group(0.42, 0.765, -0.25, T);
+  box(0.24, 0.1, 0.09, 0x3a2414, 0, 0.05, 0, clock);
+  [-0.06, 0.06].forEach(x => {
+    const [cc, cg] = canvas(64, 64); drawClock(cg, 64, x < 0 ? 4 : 10, x < 0 ? 58 : 5);
+    mesh(new THREE.CircleGeometry(0.04, 16), tex(cc), x, 0.06, 0.046, clock);
+    box(0.03, 0.02, 0.03, 0xb9bccb, x, 0.11, 0, clock);
+  });
+  interactive(clock, 'chessclock', 'ساعت شطرنج');
+  const paperM = mat(PAPER);
+  const sheet3 = mesh(new THREE.BoxGeometry(0.21, 0.006, 0.28), [paperM, paperM, tex(noteCanvas()), paperM, paperM, paperM], -1.8 + 0.43, 0.77, 0.6 + 0.2);
+  sheet3.rotation.y = -0.2;
+  interactive(sheet3, 'scoresheet', 'برگه‌ی ثبت بازی');
+  drawer5 = group(0, 0.66, 0, T);
+  box(0.5, 0.08, 0.02, WOOD_D, -0.15, 0, 0.41, drawer5);
+  box(0.46, 0.02, 0.36, WOOD_D, -0.15, -0.03, 0.22, drawer5);
+  mesh(new THREE.IcosahedronGeometry(0.02, 0), gilt, -0.15, 0, 0.43, drawer5);
+  knight5 = chessPiece('n', true, -0.1, -0.02, 0.3, 0.07, drawer5);
+  interactive(knight5, 'knight', 'اسب چوبی');
+  interactive(drawer5, 'chessdrawer', 'کشوی میز شطرنج');
+  [-0.85, 0.85].forEach(x => {
+    const ch = group(-1.8 + x, 0, 0.6);
+    box(0.45, 0.05, 0.45, WOOD, 0, 0.45, 0, ch);
+    [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]].forEach(([a, b]) => box(0.04, 0.45, 0.04, WOOD_D, a, 0.225, b, ch));
+    box(0.04, 0.5, 0.45, WOOD, x > 0 ? 0.2 : -0.2, 0.72, 0, ch);
+  });
+
+  // knight's tour board on the left wall; column 0 is at +z (your left as you face the wall)
+  const tour = group(-3.95, 1.55, -2.0);
+  box(0.04, 0.7, 0.9, 0x3a2414, 0, 0, 0, tour);
+  for (let i = 0; i < 12; i++) {
+    const r = Math.floor(i / 4), c = i % 4;
+    tourTiles5.push(box(0.02, 0.17, 0.17, mat((r + c) % 2 ? 0xa7764d : 0xe8d3b0, { emissive: 0 }), 0.03, (1 - r) * 0.19, (1.5 - c) * 0.19, tour));
+  }
+  tourKnight5 = chessPiece('n', true, 0.05, 0.13, 0.285, 0.1, tour);
+  tourKnight5.rotation.z = -Math.PI / 2;
+  interactive(tour, 'tourboard', 'سفر اسب');
+
+  // queens table, sunk in the floor until the tour is done
+  pedestal5 = group(1.4, -0.95, -0.8);
+  box(0.5, 0.8, 0.5, WOOD_D, 0, 0.4, 0, pedestal5);
+  box(0.74, 0.04, 0.74, 0x3a2414, 0, 0.82, 0, pedestal5);
+  mesh(new THREE.PlaneGeometry(0.64, 0.64), tex(boardCanvas()), 0, 0.841, 0, pedestal5).rotation.x = -Math.PI / 2;
+  QUEENS_SOLUTION.forEach(sq => {
+    const [x, z] = sq3(sqIndex(sq), 0.08), fixed = QUEENS_FIXED.includes(sq);
+    const q = chessPiece('q', true, x, 0.84, z, 0.055, pedestal5);
+    if (fixed) q.traverse(o => { if (o.isMesh) o.material = gilt; });
+    q.userData.fixed = fixed; queens5.push(q);
+  });
+  interactive(pedestal5, 'queensboard', 'میز وزیرها');
+
+  // display case of captured pieces, covered by a curtain
+  const V = group(3.7, 0, 1.6);
+  box(0.6, 0.9, 1.3, WOOD_D, 0, 0.45, 0, V);
+  box(0.62, 0.05, 1.34, WOOD, 0, 1.98, 0, V);
+  box(0.03, 1.05, 1.3, WOOD, 0.28, 1.43, 0, V);
+  box(0.56, 0.03, 1.26, WOOD, 0, 1.42, 0, V);
+  [-0.64, 0.64].forEach(z => box(0.58, 1.05, 0.02, WOOD, 0, 1.43, z, V));
+  CAPTURED.white.forEach((t, i) => chessPiece(t, true, 0.02, 1.435, -0.4 + i * 0.2, 0.15, V));
+  CAPTURED.black.forEach((t, i) => chessPiece(t, false, 0.02, 0.905, -0.4 + i * 0.2, 0.15, V));
+  curtain5 = group(-0.31, 1.95, 0, V);
+  box(0.03, 1.05, 1.28, 0x6a1f2a, 0, -0.525, 0, curtain5);
+  [-0.4, 0, 0.4].forEach(z => box(0.035, 1.05, 0.02, 0x521820, 0, -0.525, z, curtain5));
+  interactive(V, 'trophies', 'ویترین مهره‌ها');
+
+  // piece values poster
+  const vp = group(3.97, 1.75, -1.6);
+  const [vc, vg] = canvas(512, 512); drawValues(vg, 512);
+  mesh(new THREE.PlaneGeometry(0.85, 0.85), tex(vc), -0.02, 0, 0, vp).rotation.y = -Math.PI / 2;
+  box(0.03, 0.91, 0.91, 0x2a1d14, 0, 0, 0, vp);
+  interactive(vp, 'values', 'پوستر ارزش مهره‌ها');
+
+  // giant statues
+  chessPiece('k', false, -3.3, 0, -3.3, 1.05);
+  chessPiece('q', true, 3.3, 0, 3.3, 0.95);
+}
+
 function build() {
   hemi = new THREE.HemisphereLight(0x8fa6d8, 0x3a2a20, 0.45); scene.add(hemi);
   amb = new THREE.AmbientLight(0x404a66, 0.25); scene.add(amb);
-  buildRoom1(); buildRoom2(); buildRoom3(); buildRoom4(); P = scene;
+  buildRoom1(); buildRoom2(); buildRoom3(); buildRoom4(); buildRoom5(); P = scene;
   scene.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = !o.userData.noShadow; });
 }
 
@@ -1187,6 +1414,10 @@ function makeAnims() {
     { p: 0, target: () => +state.clockOpen, apply: p => { clockPivot.rotation.y = -p * 1.35; outLight3.intensity = p * 1.8; } },
     { p: 0, target: () => +state.drawerOpen, apply: p => { drawer4.position.z = p * 0.3; } },
     { p: 0, target: () => +state.balcony, apply: p => { balconyPivot.rotation.y = -p * 1.4; outLight4.intensity = p * 1.8; } },
+    { p: 0, target: () => +state.mateDone, apply: p => { drawer5.position.z = p * 0.28; } },
+    { p: 0, target: () => +state.tourDone, apply: p => { pedestal5.position.y = -0.95 + p * 0.95; } },
+    { p: 0, target: () => +state.queensDone, apply: p => { curtain5.scale.y = 1 - p * 0.94; } },
+    { p: 0, target: () => +state.chessDoor, apply: p => { chessDoorPivot.rotation.y = -p * 1.5; outLight5.intensity = p * 1.6; } },
   ];
 }
 function setLed(on) { setEm(led, on ? 0x55ff88 : 0xff5544, on ? 0x11aa44 : 0xaa2211); }
@@ -1208,6 +1439,13 @@ function updateLights() {
   setEm(faceMesh4, state.faceLit ? 0xffffff : 0x2a2724, state.faceLit ? 0xffd9a0 : 0);
   if (towerFace.lit !== state.faceLit) { towerFace.lit = state.faceLit; drawTowerFace(towerFace.g, 512, state.faceLit); towerFace.tex.needsUpdate = true; }
   setEm(led4, state.balcony ? 0x55ff88 : 0xff5544, state.balcony ? 0x11aa44 : 0xaa2211);
+  ceil5.castShadow = state.room === 4;
+  setEm(led5, state.chessDoor ? 0x55ff88 : 0xff5544, state.chessDoor ? 0x11aa44 : 0xaa2211);
+  const [kx, kz] = sq3(sqIndex(state.mateDone ? MATE_MOVE[1] : MATE_MOVE[0]), 0.09);
+  mateKnight5.position.set(kx, 0, kz);
+  tourKnight5.visible = state.knightPlaced;
+  tourTiles5.forEach(t => setEm(t, t.material.color.getHex(), state.tourDone ? 0x6a4a10 : 0));
+  queens5.forEach(q => { q.visible = q.userData.fixed || state.queensDone; });
 }
 function applyState(s) {
   state = { ...fresh(), ...s };
@@ -1215,6 +1453,7 @@ function applyState(s) {
   lens.visible = !state.lensTaken;
   bob.visible = !state.bobTaken;
   matches4.visible = !state.matchesTaken;
+  knight5.visible = !state.knightTaken;
   setLed(state.door); drawFace();
   anims.forEach(a => { a.p = a.target(); a.apply(ease(a.p)); });
   updateInv(); updateTimer(true); updateLights(); updateHintBtn();
@@ -1237,10 +1476,12 @@ const KEY_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#f2b356" stroke-wi
 const LENS_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke-width="3"><circle cx="20" cy="20" r="12" stroke="#f2b356"/><circle cx="20" cy="20" r="8" fill="#9fd8ff" fill-opacity=".5" stroke="none"/></svg>';
 const BOB_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#f2b356" stroke-width="3" stroke-linecap="round"><path d="M20 4v18"/><circle cx="20" cy="28" r="8" fill="#f2b356" fill-opacity=".35"/></svg>';
 const MATCH_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke-linecap="round"><rect x="8" y="15" width="24" height="16" rx="2" stroke="#f2b356" stroke-width="3"/><path d="M15 15V8" stroke="#f2b356" stroke-width="3"/><circle cx="15" cy="7" r="3.5" fill="#e9776a"/></svg>';
+const KNIGHT_SVG = '<svg viewBox="0 0 40 40" fill="#f2b356" fill-opacity=".35" stroke="#f2b356" stroke-width="2.5" stroke-linejoin="round"><path d="M11 34h19v-4h-3c0-6 2-9 4-14-1-6-6-10-12-10l-2-3-2 4c-4 2-7 6-8 12l4 2 5-3c1 3-1 6-4 9-1 2-1 4-1 7z"/></svg>';
 function updateInv() {
   const item = state.keyTaken && !state.chest ? ['کلید برنجی', KEY_SVG] : state.lensTaken && !state.lensPlaced ? ['عدسی تلسکوپ', LENS_SVG]
     : state.bobTaken && !state.bobPlaced ? ['وزنه‌ی آونگ', BOB_SVG]
-    : state.matchesTaken && !state.lampLit ? ['قوطی کبریت', MATCH_SVG] : null;
+    : state.matchesTaken && !state.lampLit ? ['قوطی کبریت', MATCH_SVG]
+    : state.knightTaken && !state.knightPlaced ? ['اسب چوبی', KNIGHT_SVG] : null;
   slot.innerHTML = item ? item[1] : '';
   slot.classList.toggle('full', !!item);
   slot.title = item ? item[0] : 'کوله خالی است';
@@ -1286,6 +1527,7 @@ const SONGS = [
   { chords: [[50, 57, 62, 64], [53, 60, 65, 69], [48, 55, 62, 67], [46, 53, 58, 62]], arp: [74, 77, 79, 81, 84, 86] },
   { chords: [[52, 59, 64, 67], [48, 55, 64, 67], [45, 52, 60, 64], [47, 54, 62, 66]], arp: [76, 79, 81, 83, 86, 88] },
   { chords: [[48, 55, 60, 64], [53, 57, 60, 65], [45, 52, 57, 60], [55, 59, 62, 67]], arp: [72, 74, 76, 79, 81, 84] },
+  { chords: [[45, 52, 57, 60], [50, 57, 62, 65], [43, 50, 55, 59], [52, 56, 59, 64]], arp: [69, 72, 76, 77, 81, 84] },
 ];
 const BAR = 4.8;
 const music = { on: lsGet('sleeping-clock-music') !== false, out: null, in: null, next: 0, bar: 0, timer: null };
@@ -1336,7 +1578,7 @@ document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? 
 /* ---------- leaderboard: shared through the page's database, or this device only ---------- */
 const LS_SCORES = 'sleeping-clock-scores', LS_PLAYER = 'sleeping-clock-player', LS_NAME = 'sleeping-clock-name';
 const API = '/api/scores';
-const WIN_EYEBROW = 'در بالکن برج باز شد';
+const WIN_EYEBROW = 'کیش و مات؛ آخرین در باز شد';
 const board = { mode: 'local', loading: false, rows: lsGet(LS_SCORES) || [], db: null, user: null, me: null, player: null, pending: null, newBest: false, note: '' };
 const num = v => Math.max(0, Number(v) || 0);
 const clean = r => ({ id: r.id, name: typeof r.name === 'string' ? r.name : '', mine: r.mine === true, score: num(r.score), hints: num(r.hints), at: num(r.at) });
@@ -1478,7 +1720,7 @@ function openModal(html) {
 function closeModal() { modal.hidden = true; modalOpen = false; kp = null; loopToken = null; }
 modal.addEventListener('click', e => {
   if (e.target === modal || e.target.closest('[data-close]')) return closeModal();
-  const t = e.target.closest('[data-k],[data-cell],[data-reset],[data-dial],[data-pull],[data-bell],[data-step],[data-fix],[data-strike],[data-mirror],[data-lever],[data-rreset]');
+  const t = e.target.closest('[data-k],[data-cell],[data-reset],[data-dial],[data-pull],[data-bell],[data-step],[data-fix],[data-strike],[data-mirror],[data-lever],[data-rreset],[data-mq],[data-tq],[data-qq],[data-tback],[data-treset]');
   if (!t) return;
   const d = t.dataset;
   if (d.k) kpPress(d.k);
@@ -1493,6 +1735,11 @@ modal.addEventListener('click', e => {
   else if (d.mirror) toggleMirror(+d.mirror);
   else if (d.lever) pullRing(+d.lever);
   else if ('rreset' in d) resetRings();
+  else if (d.mq) pressMate(d.mq);
+  else if (d.tq) pressTour(+d.tq);
+  else if (d.qq) pressQueen(+d.qq);
+  else if ('tback' in d) tourBack();
+  else if ('treset' in d) tourReset();
 });
 
 const NOTE = `<div class="paper">
@@ -1516,6 +1763,20 @@ const LETTER = `<h2>نامه‌ی ساعت‌ساز</h2><div class="paper">
   <p>آونگ را طوری ببند که هر رفتش درست یک ثانیه طول بکشد. بعد عقربه‌ها را به لحظه‌ای برگردان که اولین ساعت این خانه خوابید، و بگذار زنگ بزند.</p>
   <p class="sign">م. ساعت‌ساز</p></div>`;
 
+const SCORESHEET = `<h2>برگه‌ی ثبت بازی</h2><div class="paper">
+  <p>آخرین حریفم خودم بودم و بازی را نیمه‌کاره رها کردم. نوبت سفید است و فقط یک حرکت تا مات مانده؛ تمامش کن.</p>
+  <p>اسبی که به تو می‌رسد باید صفحه‌ی کوچک دیوار را بگردد و هر خانه را فقط یک بار ببیند.</p>
+  <p>بعد هشت وزیر باید در صلح کنار هم بنشینند؛ هیچ‌کدام نباید دیگری را تهدید کند.</p>
+  <p>آخر سر، حساب مهره‌های از دست رفته را بکن. در خروج فقط حساب سرش می‌شود.</p>
+  <p class="sign">م.</p></div>`;
+const VALUES = `<h2>ارزش مهره‌ها</h2><ol class="planets">${['p', 'n', 'b', 'r', 'q', 'k'].map(t =>
+  `<li><span class="sym">${glyph(t)}</span><span></span><span>${PIECE_NAMES[t]}</span><b>${t === 'k' ? 'بی‌بها' : fa(PIECE_VALUES[t])}</b></li>`).join('')}</ol>`;
+const TROPHIES = `<h2>ویترین مهره‌های گرفته‌شده</h2><div class="paper">
+  <p>مهره‌های سفیدی که از دست دادم:</p><p class="pieces">${CAPTURED.white.map(t => glyph(t, true)).join('')}</p>
+  <p>${CAPTURED.white.map(t => PIECE_NAMES[t]).join('، ')}</p>
+  <p>مهره‌های سیاهی که گرفتم:</p><p class="pieces">${CAPTURED.black.map(t => glyph(t)).join('')}</p>
+  <p>${CAPTURED.black.map(t => PIECE_NAMES[t]).join('، ')}</p>
+  <p>رمز در: امتیاز سفیدها، و پشتش امتیاز سیاه‌ها.</p></div>`;
 const DIARY = `<h2>آخرین صفحه‌ی دفتر م.</h2><div class="paper">
   <p>اینجا بالای برج است؛ همان ساعتی که همه‌ی شهر رویش را می‌بینند و من فقط پشتش را.</p>
   <p>شب‌ها صفحه‌ی ساعت تاریک است. فانوس را روشن کن و با آینه‌ها نورش را به صفحه برسان. کبریت در کشوی همین میز است؛ قفلش را مثل خورشیدی کامل کن.</p>
@@ -1532,7 +1793,7 @@ function openPoster() {
 }
 function openKeypad(target) {
   kp = { target, entry: '', busy: false };
-  const title = { safe: 'گاوصندوق دیواری', door: 'قفل در خروج', locker: 'قفل کمد فلزی', balcony: 'قفل در بالکن' }[target];
+  const title = { safe: 'گاوصندوق دیواری', door: 'قفل در خروج', locker: 'قفل کمد فلزی', balcony: 'قفل در بالکن', chess: 'قفل در خروج' }[target];
   const keysHtml = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clr', '0', 'del'].map(k =>
     `<button type="button" data-k="${k}"${k.length > 1 ? ' class="small"' : ''} aria-label="${k === 'clr' ? 'پاک کردن' : k === 'del' ? 'حذف آخرین رقم' : k}">${k === 'clr' ? 'پاک' : k === 'del' ? '⌫' : fa(k)}</button>`).join('');
   openModal(`<h2>${title}</h2><p class="sub">رمز چهار رقمی را وارد کن.</p>
@@ -1570,7 +1831,8 @@ function unlock(target) {
   thunk();
   if (target === 'safe') { state.safe = true; toast('در گاوصندوق باز شد. چیزی داخلش برق می‌زند.'); }
   else if (target === 'locker') { state.lockerOpen = true; toast('در کمد باز شد.'); }
-  else if (target === 'balcony') { state.balcony = true; updateLights(); busy = true; setTimeout(win, 2400); }
+  else if (target === 'balcony') { state.balcony = true; updateLights(); busy = true; setTimeout(() => toRoom(4), 2400); }
+  else if (target === 'chess') { state.chessDoor = true; updateLights(); busy = true; setTimeout(win, 2400); }
   else { state.door = true; setLed(true); busy = true; setTimeout(() => toRoom(1), 1500); }
 }
 
@@ -1813,12 +2075,130 @@ function toggleMirror(i) {
   }
 }
 
+// chess boards in modals: square i is a8..h1, row by row
+function boardHtml(cells, attr) {
+  return cells.map((c, i) => {
+    const r = Math.floor(i / 8), f = i % 8;
+    const marks = (f === 0 ? `<small class="rk">${8 - r}</small>` : '') + (r === 7 ? `<small class="fl">${'abcdefgh'[f]}</small>` : '');
+    return `<button type="button" ${attr}="${i}" class="${(r + f) % 2 ? 'd' : 'l'} ${c.cls || ''}" aria-label="${sqName(i)}${c.label ? ' ' + c.label : ''}">${c.text || ''}${marks}</button>`;
+  }).join('');
+}
+
+// mate in one: pick a white piece, then its target square
+let mateSel = null;
+function openMate() {
+  mateSel = null;
+  openModal(`<h2>بازی نیمه‌تمام</h2><p class="sub">نوبت سفید است. با یک حرکت مات کن: اول مهره‌ی سفید، بعد خانه‌ی مقصد را بزن.</p>
+    <div class="chess" id="mateBoard"></div><p class="kp-msg" id="mateMsg"></p>`);
+  renderMate();
+}
+function renderMate() {
+  const b = [...MATE_BOARD];
+  if (state.mateDone) { b[sqIndex(MATE_MOVE[1])] = 'N'; b[sqIndex(MATE_MOVE[0])] = ''; }
+  $('#mateBoard').innerHTML = boardHtml(b.map((pc, i) => pc ? {
+    text: glyph(pc.toLowerCase()), cls: (pc === pc.toUpperCase() ? 'w' : 'b') + (sqName(i) === mateSel ? ' sel' : ''),
+    label: (pc === pc.toUpperCase() ? '' : 'سیاه ') + PIECE_NAMES[pc.toLowerCase()],
+  } : {}), 'data-mq').replace(/data-mq="(\d+)"/g, (m, i) => `data-mq="${sqName(+i)}"`);
+}
+function pressMate(sq) {
+  if (state.mateDone) return;
+  const pc = MATE_BOARD[sqIndex(sq)], white = pc && pc === pc.toUpperCase(), msg = $('#mateMsg');
+  if (white) { mateSel = mateSel === sq ? null : sq; msg.textContent = ''; click(400); return renderMate(); }
+  if (!mateSel) { msg.className = 'kp-msg'; msg.textContent = 'نوبت سفید است؛ اول یک مهره‌ی سفید را انتخاب کن.'; return; }
+  if (mateSel === MATE_MOVE[0] && sq === MATE_MOVE[1]) {
+    state.mateDone = true; mateSel = null; renderMate(); updateLights();
+    return succeed(msg, 'کیش و مات!', () => { thunk(); toast('کشوی میز شطرنج باز شد. داخلش یک اسب چوبی است.'); });
+  }
+  mateSel = null; renderMate();
+  fail(msg, $('#mateBoard'), 'این حرکت مات نمی‌کند.');
+}
+
+// knight's tour on the 3x4 wall board
+const KNIGHT_JUMPS = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+const tourCur = () => state.tour.indexOf(Math.max(...state.tour));
+function knightNext(i) {
+  const r = Math.floor(i / 4), c = i % 4;
+  return KNIGHT_JUMPS.map(([a, b]) => [r + a, c + b]).filter(([a, b]) => a >= 0 && a < 3 && b >= 0 && b < 4).map(([a, b]) => a * 4 + b);
+}
+function openTour() {
+  openModal(`<h2>سفر اسب</h2><p class="sub">اسب را با حرکت «ل» جابه‌جا کن تا هر دوازده خانه را فقط یک بار ببیند.</p>
+    <div class="chess tour" id="tourBoard"></div><p class="kp-msg" id="tMsg"></p>
+    <div class="levers"><button class="btn ghost" type="button" data-tback>یک حرکت عقب</button><button class="btn ghost" type="button" data-treset>از نو</button></div>`);
+  renderTour();
+}
+function renderTour() {
+  const cur = tourCur(), next = state.tourDone ? [] : knightNext(cur).filter(i => !state.tour[i]);
+  $('#tourBoard').innerHTML = state.tour.map((n, i) => {
+    const cls = ((Math.floor(i / 4) + i % 4) % 2 ? 'd' : 'l') + (i === cur ? ' w' : '') + (next.includes(i) ? ' go' : '');
+    const text = i === cur ? glyph('n') : n ? `<span class="n">${fa(n)}</span>` : '';
+    return `<button type="button" data-tq="${i}" class="${cls}" aria-label="خانه‌ی ${fa(i + 1)}${n ? '، دیده‌شده' : ''}">${text}</button>`;
+  }).join('');
+}
+function pressTour(i) {
+  if (state.tourDone) return;
+  const cur = tourCur(), msg = $('#tMsg');
+  if (state.tour[i] || !knightNext(cur).includes(i)) { msg.className = 'kp-msg'; msg.textContent = 'اسب فقط «ل» حرکت می‌کند و به خانه‌ی دیده‌شده برنمی‌گردد.'; return; }
+  const t = [...state.tour]; t[i] = t[cur] + 1; state.tour = t;
+  click(300 + t[i] * 30); renderTour(); msg.textContent = '';
+  if (t[i] === t.length) {
+    state.tourDone = true; renderTour();
+    succeed(msg, 'هر دوازده خانه را دیدی!', () => { updateLights(); thunk(); toast('صدای سنگ آمد: میزی از وسط کف اتاق بالا آمد.', 5000); });
+  } else if (!knightNext(i).some(j => !t[j])) { msg.className = 'kp-msg bad'; msg.textContent = 'اسب گیر افتاد. یک حرکت عقب برو یا از نو شروع کن.'; }
+}
+function tourBack() {
+  if (state.tourDone) return;
+  const cur = tourCur();
+  if (state.tour[cur] <= 1) return;
+  const t = [...state.tour]; t[cur] = 0; state.tour = t;
+  click(200); renderTour(); $('#tMsg').textContent = '';
+}
+function tourReset() {
+  if (state.tourDone) return;
+  state.tour = [...TOUR_START]; click(200); renderTour(); $('#tMsg').textContent = '';
+}
+
+// eight queens with two fixed ones
+const QF = QUEENS_FIXED.map(sqIndex);
+const queenList = () => [...QF, ...state.queens.map((v, i) => v ? i : -1).filter(i => i >= 0)];
+function queenClash(list) {
+  const bad = new Set();
+  list.forEach((a, x) => list.slice(x + 1).forEach(b => {
+    const ra = Math.floor(a / 8), ca = a % 8, rb = Math.floor(b / 8), cb = b % 8;
+    if (ra === rb || ca === cb || Math.abs(ra - rb) === Math.abs(ca - cb)) { bad.add(a); bad.add(b); }
+  }));
+  return bad;
+}
+function openQueens() {
+  openModal(`<h2>میز وزیرها</h2><p class="sub">هشت وزیر بچین که هیچ دوتایی در یک ردیف، ستون یا قطر نباشند. دو وزیر طلایی ثابت‌اند.</p>
+    <div class="chess" id="qBoard"></div><p class="kp-msg" id="qMsg"></p>`);
+  renderQueens();
+}
+function renderQueens() {
+  const list = queenList(), bad = queenClash(list);
+  $('#qBoard').innerHTML = boardHtml(Array.from({ length: 64 }, (_, i) => list.includes(i) ? {
+    text: glyph('q'), cls: (QF.includes(i) ? 'fx' : 'w') + (bad.has(i) ? ' bad' : ''), label: QF.includes(i) ? 'وزیر ثابت' : 'وزیر',
+  } : {}), 'data-qq');
+  if (!state.queensDone) { const m = $('#qMsg'); m.className = 'kp-msg'; m.textContent = `وزیرها: ${fa(list.length)} از ۸` + (bad.size ? '؛ وزیرهای قرمز همدیگر را تهدید می‌کنند.' : ''); }
+}
+function pressQueen(i) {
+  if (state.queensDone || QF.includes(i)) return;
+  const q = [...state.queens]; q[i] ^= 1;
+  if (q[i] && queenList().length >= 8) { $('#qMsg').textContent = 'هشت وزیر بیشتر نداری. یکی را بردار.'; return; }
+  state.queens = q; click(q[i] ? 500 : 300); renderQueens();
+  const list = queenList();
+  if (list.length === 8 && !queenClash(list).size) {
+    state.queensDone = true;
+    succeed($('#qMsg'), 'هشت وزیر در صلح‌اند!', () => { updateLights(); thunk(); toast('پرده‌ی مخملی ویترین کنار دیوار راست بالا رفت.', 5000); });
+  }
+}
+
 /* ---------- rooms & progress ---------- */
 const ROOM_TOASTS = [
   '',
   'اتاق دوم: رصدخانه‌ی متروک. در پشت سرت قفل شد و برق هم قطع است.',
   'اتاق سوم: کارگاه ساعت‌ساز. ساعت ایستاده‌ی ته اتاق خاموش است و هیچ تیک‌تاکی شنیده نمی‌شود.',
   'اتاق چهارم: بالای برج ساعت شهر. پشت صفحه‌ی بزرگ ساعت ایستاده‌ای، اما شیشه‌اش تاریک است.',
+  'اتاق پنجم: اتاق شطرنج م. کف اتاق خودش یک صفحه‌ی شطرنج است و بازی‌ای نیمه‌تمام روی میز مانده.',
 ];
 function toRoom(n) {
   $('#fade').dataset.on = '1';
@@ -1914,6 +2294,30 @@ function act(id) {
       return openCanvas('صفحه‌ی ساعت برج', 600, drawTowerFace, 'نور فانوس از پشت شیشه‌ی مات می‌گذرد. از این طرف همه‌چیز کمی عجیب است.');
     case 'balcony': return toast(state.balcony ? 'در باز است!' : 'در بالکن قفل است. کنارش یک صفحه‌کلید هست.');
     case 'balconypad': return state.balcony ? toast('در باز است!') : openKeypad('balcony');
+    // room 5
+    case 'scoresheet': state.sheetRead = true; return openModal(SCORESHEET);
+    case 'chesstable': return state.mateDone ? toast('سفید مات کرده. شاه سیاه در گوشه میان مهره‌های خودش خفه شده.') : openMate();
+    case 'chessdrawer':
+      if (!state.mateDone) return toast('کشوی میز شطرنج قفل است. شاید وقتی بازی تمام شود باز شود.');
+      return toast(state.knightTaken ? 'کشو خالی است.' : 'یک اسب چوبی داخل کشو است.');
+    case 'knight':
+      state.knightTaken = true; knight5.visible = false; updateInv(); chime();
+      return toast('اسب چوبی را برداشتی.');
+    case 'chessclock': return toast('ساعت شطرنج. عقربه‌ی سفید تا لب پرچم رسیده؛ وقت زیادی نمانده.');
+    case 'tourboard':
+      if (state.tourDone) return toast('همه‌ی خانه‌های صفحه‌ی کوچک روشن شده‌اند.');
+      if (!state.knightPlaced) {
+        if (!state.knightTaken) return toast('یک صفحه‌ی شطرنج کوچک، سه در چهار. گوشه‌اش جای خالی یک اسب است.');
+        state.knightPlaced = true; updateInv(); updateLights(); thunk();
+      }
+      return openTour();
+    case 'queensboard': return state.queensDone ? toast('هشت وزیر در صلح‌اند.') : openQueens();
+    case 'trophies':
+      if (!state.queensDone) return toast('ویترین با پرده‌ی مخملی پوشیده شده. انگار منتظر چیزی است.');
+      state.trophiesSeen = true; return openModal(TROPHIES);
+    case 'values': return openModal(VALUES);
+    case 'chessdoor': return toast(state.chessDoor ? 'در باز است!' : 'در خروج قفل است. کنارش یک صفحه‌کلید هست.');
+    case 'chesspad': return state.chessDoor ? toast('در باز است!') : openKeypad('chess');
     case 'bigclock':
       if (state.clockOpen) return;
       if (state.ticking) return openHands();
@@ -1951,6 +2355,13 @@ const HINTS = {
   lamp: ['فانوس روی میز آینه‌ها، کنار دیوار چپ است. با کبریت روشنش کن.'],
   mirrors: ['آینه‌ها را بچرخان تا پرتو از فانوس به عدسی بالای جعبه برسد. پرتو می‌تواند از روی مسیر خودش هم رد شود.', 'همه‌ی آینه‌ها را / بگذار، جز آینه‌ی ردیف ۴ ستون ۳ و آینه‌ی ردیف ۵ ستون ۱ که باید \\ باشند (ردیف از بالا، ستون از چپ).'],
   face: ['صفحه‌ی ساعت برج حالا روشن است. از نزدیک نگاهش کن.'],
+  sheet: ['روی میز شطرنج یک برگه‌ی ثبت بازی هست. بخوانش.'],
+  mate: ['نوبت سفید است. به شاه سیاه نگاه کن: رخ و پیاده‌های خودش راهش را بسته‌اند.', 'اسب g5 را به f7 ببر: مات خفه.'],
+  knight: ['اسب چوبی داخل کشوی باز میز شطرنج است.'],
+  tour: ['اسب را روی صفحه‌ی کوچک دیوار چپ بگذار و هر دوازده خانه را فقط یک بار برو. اگر گیر افتادی، عقب برگرد.', 'ترتیب خانه‌ها ردیف به ردیف از چپ: ۱، ۴، ۷، ۱۰ / ۱۲، ۹، ۲، ۵ / ۳، ۶، ۱۱، ۸.'],
+  queens: ['روی میزی که از کف بالا آمد هشت وزیر بچین که هیچ دوتایی در یک ردیف، ستون یا قطر نباشند.', 'وزیرها: a8، e7، h6، f5، c4، g3، b2، d1.'],
+  trophies: ['پرده‌ی ویترین کنار دیوار راست بالا رفت. مهره‌های داخلش را ببین.'],
+  chess: ['ارزش مهره‌ها روی پوستر دیوار راست است. امتیاز مهره‌های سفید گرفته‌شده را جمع بزن، بعد سیاه‌ها را.', 'سفید: ۹+۵+۳+۱+۱ = ۱۹، سیاه: ۵+۳+۳+۳+۱ = ۱۵. رمز ۱۹۱۵ است.'],
   balcony: ['تو پشت صفحه را می‌بینی، پس همه‌چیز برعکس است. عقربه‌ها را در آینه تصور کن.', 'از پشت ۴:۴۰ دیده می‌شود، اما مردم شهر ۷:۲۰ می‌خوانند. رمز در بالکن ۰۷۲۰ است.'],
 };
 function step() {
@@ -1967,8 +2378,12 @@ function step() {
     if (!s.letterRead) return 'letter'; if (!s.stripSeen) return 'strip'; if (!s.caseOpen) return 'bells';
     if (!s.bobTaken) return 'bob'; if (!s.ticking) return 'pendulum'; return 'time';
   }
-  if (!s.diaryRead) return 'diary'; if (!s.drawerOpen) return 'rings'; if (!s.matchesTaken) return 'matches';
-  if (!s.lampLit) return 'lamp'; if (!s.faceLit) return 'mirrors'; if (!s.faceSeen) return 'face'; return 'balcony';
+  if (s.room === 3) {
+    if (!s.diaryRead) return 'diary'; if (!s.drawerOpen) return 'rings'; if (!s.matchesTaken) return 'matches';
+    if (!s.lampLit) return 'lamp'; if (!s.faceLit) return 'mirrors'; if (!s.faceSeen) return 'face'; return 'balcony';
+  }
+  if (!s.sheetRead) return 'sheet'; if (!s.mateDone) return 'mate'; if (!s.knightTaken) return 'knight';
+  if (!s.tourDone) return 'tour'; if (!s.queensDone) return 'queens'; if (!s.trophiesSeen) return 'trophies'; return 'chess';
 }
 function hint() {
   const k = step(), list = HINTS[k], n = state.hintsSeen[k] || 0, isNew = n < list.length;
@@ -2064,7 +2479,7 @@ addEventListener('blur', () => keys.clear());
 function free(x, z) {
   const room = ROOMS[state.room], lx = x - room.x0;
   if (Math.abs(lx) > 3.65 || Math.abs(z) > 3.65) return false;
-  return !room.colliders.some(([a, b, c, d]) => lx > a - R && lx < b + R && z > c - R && z < d + R);
+  return !room.colliders.some(([a, b, c, d, on]) => (!on || state[on]) && lx > a - R && lx < b + R && z > c - R && z < d + R);
 }
 function tryMove(dx, dz) {
   const p = camera.position;
@@ -2153,6 +2568,8 @@ function cleanSave(save) {
   if (out.hands && !(inRange(out.hands[0], 1, 12) && inRange(out.hands[1], 0, 55) && out.hands[1] % 5 === 0)) delete out.hands;
   if (out.rings && !out.rings.every(v => inRange(v, 0, 7))) delete out.rings;
   if (out.mirrors && !out.mirrors.every(v => v === 0 || v === 1)) delete out.mirrors;
+  if (out.tour && !(out.tour.every(v => inRange(v, 0, 12)) && out.tour[0] === 1)) delete out.tour;
+  if (out.queens && !out.queens.every(v => v === 0 || v === 1)) delete out.queens;
   if (out.board && !out.board.every(b => b === 0 || b === 1)) delete out.board;
   if (out.hintsSeen && !Object.values(out.hintsSeen).every(n => inRange(n, 0, 9))) delete out.hintsSeen;
   if (out.elapsed < 0) out.elapsed = 0;
@@ -2171,7 +2588,8 @@ function resume(view) {
   enter(view);
   setMusic(music.on);
   if (state.won) win(true);
-  else if (state.balcony) { busy = true; setTimeout(win, 600); }
+  else if (state.chessDoor) { busy = true; setTimeout(win, 600); }
+  else if (state.balcony && state.room === 3) { busy = true; setTimeout(() => toRoom(4), 600); }
   else if (state.clockOpen && state.room === 2) { busy = true; setTimeout(() => toRoom(3), 600); }
   else if (state.vault && state.room === 1) { busy = true; setTimeout(() => toRoom(2), 600); }
   else if (state.door && state.room === 0) { busy = true; setTimeout(() => toRoom(1), 600); }
