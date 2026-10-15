@@ -49,6 +49,8 @@ h1 { margin: 0; font-family: var(--display); font-weight: 400; color: var(--ambe
 .btn { align-self: flex-start; border: 0; border-radius: 12px; background: var(--amber); color: var(--amber-ink); font-weight: 700; font-size: 1.05rem; padding: 12px 26px; cursor: pointer; transition: transform .15s; }
 .btn:hover { transform: translateY(-1px); }
 .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-size: .95rem; padding: 8px 18px; align-self: center; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.actions .btn { align-self: auto; }
 
 .board-card { flex: 0 1 21rem; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .board-card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.6rem; color: var(--ink); }
@@ -164,7 +166,10 @@ button.pill { cursor: pointer; }
         <li><span class="chip">کلیک / لمس</span> بررسی اشیا یا راه رفتن روی زمین</li>
         <li><span class="chip" dir="ltr">W A S D</span> راه رفتن با کیبورد</li>
       </ul>
-      <button class="btn" id="startBtn" type="button">ورود به اتاق</button>
+      <div class="actions">
+        <button class="btn" id="startBtn" type="button">ورود به اتاق</button>
+        <button class="btn ghost" id="newBtn" type="button" hidden>شروع از اول</button>
+      </div>
     </div>
     <section class="board-card" aria-labelledby="boardTitle1">
       <h2 id="boardTitle1">بهترین فرارها</h2>
@@ -1673,7 +1678,7 @@ function hint() {
   toast(list[Math.min(n, list.length - 1)] + (isNew ? ' (۳۰ ثانیه جریمه)' : ''), 7000);
 }
 function win(restored) {
-  state.won = true; busy = false;
+  state.won = true; busy = false; clearSave();
   const score = Math.round(state.elapsed + state.hints * PENALTY);
   $('#winText').innerHTML = `زمان فرار: <b>${fmt(state.elapsed)}</b><br>راهنما: <b>${state.hints ? fa(state.hints) + ' بار (+' + fa(state.hints * PENALTY) + ' ثانیه)' : 'هیچ'}</b><br>امتیاز نهایی: <b>${fmt(score)}</b>`;
   $('#hud').hidden = true; $('#win').hidden = false;
@@ -1822,9 +1827,66 @@ function enter(view) {
   yaw = view ? view.yaw : 0; pitch = view ? view.pitch : -0.05;
   walk = pending = null;
 }
+// a run in progress is saved on this device, so a refresh continues it instead of starting over
+const LS_SAVE = 'sleeping-clock-save', SAVE_VERSION = 1;
+let resumeView = null;
+function saveGame() {
+  if (!state.started || state.won) return;
+  lsSet(LS_SAVE, { v: SAVE_VERSION, state: { ...state }, view: { x: camera.position.x, z: camera.position.z, yaw, pitch } });
+}
+function clearSave() { try { localStorage.removeItem(LS_SAVE); } catch (e) { /* storage blocked */ } }
+const isNum = v => typeof v === 'number' && Number.isFinite(v);
+const inRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+// keep only fields that look like the ones fresh() makes; anything else falls back to the default
+function cleanSave(save) {
+  if (!save || save.v !== SAVE_VERSION || !save.state || typeof save.state !== 'object') return null;
+  const s = save.state, base = fresh(), out = {};
+  for (const k in base) {
+    const v = s[k], d = base[k];
+    if (Array.isArray(d) ? Array.isArray(v) && v.length === d.length && v.every(isNum)
+      : d !== null && typeof d === 'object' ? v && typeof v === 'object' && !Array.isArray(v)
+      : typeof v === typeof d && (typeof v !== 'number' || Number.isFinite(v))) out[k] = v;
+  }
+  if (!out.started || out.won || !inRange(out.room, 0, ROOMS.length - 1)) return null;
+  if (!inRange(out.penLen, 0, PEN.length - 1)) delete out.penLen;
+  if (out.dials && !out.dials.every(d => inRange(d, 0, DIAL.length - 1))) delete out.dials;
+  if (out.hands && !(inRange(out.hands[0], 1, 12) && inRange(out.hands[1], 0, 55) && out.hands[1] % 5 === 0)) delete out.hands;
+  if (out.board && !out.board.every(b => b === 0 || b === 1)) delete out.board;
+  if (out.hintsSeen && !Object.values(out.hintsSeen).every(n => inRange(n, 0, 9))) delete out.hintsSeen;
+  if (out.elapsed < 0) out.elapsed = 0;
+  if (!inRange(out.hints, 0, 50)) delete out.hints;
+  const v = save.view, x0 = ROOMS[out.room].x0;
+  const view = v && [v.x, v.z, v.yaw, v.pitch].every(isNum) && Math.abs(v.x - x0) <= 3.65 && Math.abs(v.z) <= 3.65
+    ? { x: v.x, z: v.z, yaw: v.yaw, pitch: Math.max(-1.2, Math.min(1.2, v.pitch)) } : null;
+  return { state: out, view };
+}
+setInterval(saveGame, 2000);
+addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
+// enter a restored run, finishing any room change or ending that was under way
+function resume(view) {
+  enter(view);
+  setMusic(music.on);
+  if (state.won) win(true);
+  else if (state.clockOpen) { busy = true; setTimeout(win, 600); }
+  else if (state.vault && state.room === 1) { busy = true; setTimeout(() => toRoom(2), 600); }
+  else if (state.door && state.room === 0) { busy = true; setTimeout(() => toRoom(1), 600); }
+}
 $('#startBtn').addEventListener('click', () => {
+  if (resumeView) {
+    const view = resumeView.view; resumeView = null; $('#newBtn').hidden = true;
+    resume(view);
+    return toast(`${ROOM_NAMES[state.room]}؛ از همان جایی که ماندی ادامه بده.`);
+  }
   enter(); setMusic(music.on);
   toast('اشیای اتاق را بررسی کن. روی زمین بزن تا آنجا بروی.');
+});
+$('#newBtn').addEventListener('click', () => {
+  resumeView = null; clearSave(); applyState({});
+  $('#newBtn').hidden = true; $('#startBtn').textContent = 'ورود به اتاق';
+  camera.position.set(ROOMS[0].spawn.x, EYE, ROOMS[0].spawn.z); yaw = 0; pitch = -0.05;
+  $('#startBtn').focus();
 });
 $('#againBtn').addEventListener('click', () => {
   $('#nameForm').hidden = true; board.pending = null;
@@ -1843,16 +1905,18 @@ async function start(data) {
   } catch (e) { /* draw with fallback fonts */ }
   build(); makeAnims();
   const saved = data && data.state;
-  applyState(saved || {});
+  const local = saved ? null : cleanSave(lsGet(LS_SAVE));
+  // a saved run waits on the intro screen (clock paused) until the player chooses to continue
+  applyState(saved || (local ? { ...local.state, started: false } : {}));
   $('#musicBtn').setAttribute('aria-pressed', String(music.on));
   $('#musicBtn').textContent = music.on ? '♪ موسیقی' : '♪ بی‌صدا';
-  if (saved && saved.started) {
-    enter(data.view);
-    setMusic(music.on);
-    if (saved.won) win(true);
-    else if (saved.clockOpen) { busy = true; setTimeout(win, 600); }
-    else if (saved.vault && saved.room === 1) { busy = true; setTimeout(() => toRoom(2), 600); }
-    else if (saved.door && saved.room === 0) { busy = true; setTimeout(() => toRoom(1), 600); }
+  if (saved && saved.started) resume(data.view);
+  else if (local) {
+    resumeView = local;
+    $('#startBtn').textContent = `ادامه‌ی بازی · ${ROOM_NAMES[state.room]} · ${fmt(state.elapsed)}`;
+    $('#newBtn').hidden = false;
+    const sp = local.view || ROOMS[state.room].spawn;
+    camera.position.set(sp.x, EYE, sp.z);
   }
   initBoard();
   frame();
