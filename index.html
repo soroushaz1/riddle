@@ -1,0 +1,1428 @@
+<title>اتاق ساعت خوابیده</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Noto+Sans+Symbols&family=Vazirmatn:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-bleed low-poly rooms in WebGL; a thin HUD floats on the edges, paper notes, keypads and panels rise over the scene */
+:root {
+  --night: #0d0f17;
+  --ink: #f1e7d3;
+  --muted: #a6a9bf;
+  --amber: #f2b356;
+  --amber-ink: #2a1a08;
+  --panel: rgba(20, 23, 35, .86);
+  --panel-solid: #171a27;
+  --well: #0a0c13;
+  --key: #232838;
+  --line: rgba(241, 231, 211, .14);
+  --paper: #efe3c8;
+  --paper-ink: #3a2c1c;
+  --wrong: #e9776a;
+  --ok: #82d69d;
+  --signal: #ff4a36;
+  --display: 'Lalezar', 'Vazirmatn', Tahoma, sans-serif;
+  --body: 'Vazirmatn', Tahoma, 'Segoe UI', sans-serif;
+  --symbols: 'Noto Sans Symbols', 'Segoe UI Symbol', 'DejaVu Sans', sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; touch-action: none; cursor: grab; }
+#stage canvas.hot { cursor: pointer; }
+button { font-family: var(--body); }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.sym { font-family: var(--symbols); }
+
+.overlay { position: fixed; inset: 0; display: flex; overflow: auto; padding: 24px 16px; }
+.overlay > * { margin: auto; }
+.intro, .win { background: linear-gradient(to left, rgba(13,15,23,.95) 0%, rgba(13,15,23,.8) 55%, rgba(13,15,23,.45) 100%); }
+.wrap { width: min(62rem, 100%); display: flex; flex-wrap: wrap; gap: 32px 56px; align-items: center; justify-content: space-between; }
+.intro-inner { flex: 1 1 22rem; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { margin: 0; color: var(--muted); font-size: .95rem; }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; color: var(--amber); font-size: clamp(3rem, 10vw, 5.2rem); line-height: 1.02; text-wrap: balance; }
+.lede { margin: 0; font-size: 1.05rem; line-height: 1.95; max-width: 36ch; }
+.controls { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; color: var(--muted); }
+.controls li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chip { color: var(--ink); border: 1px solid var(--line); background: var(--key); border-radius: 8px; padding: 2px 10px; font-size: .9rem; min-width: 5.5rem; text-align: center; }
+.btn { align-self: flex-start; border: 0; border-radius: 12px; background: var(--amber); color: var(--amber-ink); font-weight: 700; font-size: 1.05rem; padding: 12px 26px; cursor: pointer; transition: transform .15s; }
+.btn:hover { transform: translateY(-1px); }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-size: .95rem; padding: 8px 18px; align-self: center; }
+
+.board-card { flex: 0 1 21rem; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.board-card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.6rem; color: var(--ink); }
+.board-note { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.7; }
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.board li { display: grid; grid-template-columns: 2rem 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; border: 1px solid transparent; }
+.board li:nth-child(odd) { background: rgba(255,255,255,.03); }
+.board li.me { border-color: var(--amber); }
+.board .rank { color: var(--muted); font-variant-numeric: tabular-nums; }
+.board .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board .score { font-weight: 700; font-variant-numeric: tabular-nums; text-align: left; }
+.board .score small { display: block; font-weight: 400; color: var(--muted); font-size: .75rem; }
+.board .empty { grid-template-columns: 1fr; color: var(--muted); }
+.name-form { display: flex; flex-direction: column; gap: 8px; }
+.name-form label { color: var(--muted); font-size: .95rem; }
+.name-form .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.name-form input { flex: 1 1 10rem; min-width: 0; font: inherit; color: var(--ink); background: var(--well); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.name-form .btn { align-self: auto; }
+.name-form .btn:disabled { opacity: .6; cursor: progress; }
+
+.bar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); inset-inline: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none; }
+.bar .group { display: flex; gap: 8px; }
+.pill { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; color: var(--ink); font-size: .92rem; white-space: nowrap; }
+button.pill { cursor: pointer; }
+#musicBtn[aria-pressed="false"] { color: var(--muted); }
+#timer { font-variant-numeric: tabular-nums; font-weight: 700; }
+#inv { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: 50%; transform: translateX(-50%); pointer-events: none; }
+.slot { width: 52px; height: 52px; border-radius: 12px; border: 1px dashed var(--line); background: var(--panel); display: grid; place-items: center; }
+.slot.full { border-style: solid; border-color: var(--amber); }
+.slot svg { width: 34px; height: 34px; }
+#toast { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); left: 50%; transform: translate(-50%, 8px); width: max-content; max-width: min(34rem, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; line-height: 1.8; text-align: center; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; }
+#toast[data-show] { opacity: 1; transform: translate(-50%, 0); }
+#label { position: fixed; transform: translate(-50%, -170%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 2px 10px; font-size: .85rem; pointer-events: none; white-space: nowrap; }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .8s; }
+#fade[data-on] { opacity: 1; }
+
+#modal { background: rgba(8, 9, 14, .72); backdrop-filter: blur(3px); }
+.sheet { width: min(26rem, 100%); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
+.sheet:focus { outline: none; }
+.sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; color: var(--amber); font-size: 1.8rem; }
+.sheet .sub { margin: -10px 0 0; color: var(--muted); line-height: 1.8; }
+.paper { background: var(--paper); color: var(--paper-ink); padding: 22px; border-radius: 3px; transform: rotate(-1deg); box-shadow: 0 10px 30px rgba(0,0,0,.45); line-height: 2.1; font-size: 1.02rem; }
+.paper p { margin: 0 0 8px; }
+.paper .sign { text-align: left; font-family: var(--display); font-size: 1.3rem; margin: 0; }
+.rainbow { width: 168px; height: 84px; margin: 4px auto 10px; background: radial-gradient(circle at 50% 100%, transparent 38%, #8b5cf6 38% 45%, #4f46e5 45% 52%, #3b82f6 52% 59%, #22a35a 59% 66%, #f2c12e 66% 73%, #f27a24 73% 80%, #d93a33 80% 87%, transparent 87%); }
+.view { width: 100%; max-width: 300px; aspect-ratio: 1; align-self: center; }
+.caption { margin: 0; color: var(--muted); text-align: center; line-height: 1.8; }
+.display { direction: ltr; display: flex; gap: 10px; justify-content: center; }
+.display span { width: 52px; height: 62px; border: 1px solid var(--line); border-radius: 10px; background: var(--well); display: grid; place-items: center; font-weight: 700; font-size: 1.9rem; color: var(--amber); }
+.kp-msg { margin: 0; min-height: 1.6em; text-align: center; color: var(--muted); }
+.kp-msg.bad { color: var(--wrong); }
+.kp-msg.ok { color: var(--ok); }
+.pad { direction: ltr; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pad button { height: 56px; border-radius: 12px; background: var(--key); color: var(--ink); border: 1px solid var(--line); font-weight: 700; font-size: 1.4rem; cursor: pointer; }
+.pad button:active { background: var(--amber); color: var(--amber-ink); }
+.pad button.small { font-size: 1rem; font-weight: 500; }
+.lights { direction: ltr; display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; justify-content: center; }
+.lights button { height: 72px; border-radius: 14px; border: 1px solid var(--line); background: var(--well); cursor: pointer; position: relative; }
+.lights button::after { content: ''; position: absolute; inset: 22px; border-radius: 50%; background: #3a3226; }
+.lights button[aria-pressed="true"]::after { background: var(--amber); box-shadow: 0 0 18px 4px rgba(242,179,86,.55); }
+.beacon { width: 140px; height: 140px; border-radius: 50%; align-self: center; background: #2a0c08; border: 6px solid #3b2a20; }
+.beacon.on { background: var(--signal); box-shadow: 0 0 40px 12px rgba(255,74,54,.55); }
+.morse { direction: ltr; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; margin-top: 10px; font-size: 1.05rem; }
+.morse div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed rgba(58,44,28,.3); }
+.morse b { font-family: var(--body); }
+.dials { direction: ltr; display: flex; gap: 14px; justify-content: center; }
+.dial { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.dial button { width: 64px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--key); color: var(--ink); cursor: pointer; }
+.dial span { width: 64px; height: 72px; display: grid; place-items: center; border-radius: 12px; background: var(--well); border: 1px solid var(--line); font-size: 2.2rem; color: var(--amber); }
+.planets { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.planets li { display: grid; grid-template-columns: 1.6rem 1.4rem 1fr auto; align-items: center; gap: 10px; }
+.planets .dot { width: 18px; height: 18px; border-radius: 50%; }
+.planets .sym { font-size: 1.5rem; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) { .shake { animation: none; } #toast, .btn, #fade { transition: none; } }
+</style>
+
+<div id="stage"></div>
+
+<div id="hud" dir="rtl" hidden>
+  <div class="bar">
+    <span class="pill" id="timer" aria-label="اتاق و زمان">اتاق ۱ · ۰۰:۰۰</span>
+    <div class="group">
+      <button class="pill" id="musicBtn" type="button" aria-pressed="true">♪ موسیقی</button>
+      <button class="pill" id="hintBtn" type="button">راهنما</button>
+    </div>
+  </div>
+  <div id="inv"><div class="slot" id="slot" title="کوله"></div></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="label" hidden></div>
+</div>
+
+<div id="intro" class="overlay intro" dir="rtl">
+  <div class="wrap">
+    <div class="intro-inner">
+      <p class="eyebrow">اتاق فرار در دو پرده</p>
+      <h1>اتاق ساعت<br>خوابیده</h1>
+      <p class="lede">در را از پشت قفل کرده‌اند. ساعت دیواری از کار افتاده و پشت این اتاق، رصدخانه‌ای تاریک منتظر است. رمزها را پیدا کن و بیرون برو. هر راهنما ۳۰ ثانیه به زمانت اضافه می‌کند.</p>
+      <ul class="controls">
+        <li><span class="chip">کشیدن</span> نگاه به اطراف</li>
+        <li><span class="chip">کلیک / لمس</span> بررسی اشیا یا راه رفتن روی زمین</li>
+        <li><span class="chip" dir="ltr">W A S D</span> راه رفتن با کیبورد</li>
+      </ul>
+      <button class="btn" id="startBtn" type="button">ورود به اتاق</button>
+    </div>
+    <section class="board-card" aria-labelledby="boardTitle1">
+      <h2 id="boardTitle1">بهترین فرارها</h2>
+      <ol class="board" id="boardIntro"></ol>
+      <p class="board-note" data-board-note></p>
+    </section>
+  </div>
+</div>
+
+<div id="modal" class="overlay" dir="rtl" hidden><div class="sheet" id="sheet" tabindex="-1"></div></div>
+
+<div id="win" class="overlay win" dir="rtl" hidden>
+  <div class="wrap">
+    <div class="intro-inner">
+      <p class="eyebrow" id="winEyebrow">در گاوصندوقی باز شد</p>
+      <h1>آزاد شدی</h1>
+      <p class="lede" id="winText"></p>
+      <form class="name-form" id="nameForm" hidden>
+        <label for="playerName">اسمت در جدول رکوردها</label>
+        <div class="row">
+          <input id="playerName" name="playerName" maxlength="24" autocomplete="nickname" required>
+          <button class="btn" id="nameBtn" type="submit">ثبت رکورد</button>
+        </div>
+        <p class="board-note" id="nameMsg" role="status"></p>
+      </form>
+      <button class="btn" id="againBtn" type="button">دوباره بازی کن</button>
+    </div>
+    <section class="board-card" aria-labelledby="boardTitle2">
+      <h2 id="boardTitle2">جدول رکوردها</h2>
+      <ol class="board" id="boardWin"></ol>
+      <p class="board-note" data-board-note></p>
+    </section>
+  </div>
+</div>
+
+<div id="fade"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const FA = '۰۱۲۳۴۵۶۷۸۹';
+const fa = v => String(v).replace(/[0-9]/g, d => FA[d]);
+const fmt = sec => fa(String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0'));
+const CODES = { safe: '1225', door: '3817', locker: '7294' };
+const PENALTY = 30;
+const REACH = 3, SPEED = 2.6, R = 0.3, EYE = 1.6, H = 3.2;
+const WOOD = 0x7a5236, WOOD_D = 0x5a3b26, GOLD = 0xd9a93e, PAPER = 0xefe3c8;
+const ROOM_NAMES = ['اتاق ۱', 'اتاق ۲'];
+const LIGHTS_START = [0, 0, 0, 1, 1, 1, 0, 1, 0];
+const PLANETS = [
+  { name: 'عطارد', sym: '☿', col: '#a39a92', r: 12 }, { name: 'زهره', sym: '♀', col: '#e6c88f', r: 18 },
+  { name: 'زمین', sym: '⊕', col: '#4a8fd6', r: 19 }, { name: 'مریخ', sym: '♂', col: '#d0563a', r: 15 },
+  { name: 'مشتری', sym: '♃', col: '#d9a877', r: 36 }, { name: 'زحل', sym: '♄', col: '#e2c98f', r: 30, ring: true },
+  { name: 'اورانوس', sym: '♅', col: '#8fd3dc', r: 24 }, { name: 'نپتون', sym: '♆', col: '#4a6fe0', r: 23 },
+];
+const DIAL = ['☾', '♃', '☿', '♆', '⊕', '♄', '☉', '♀', '♅', '♂'];
+const VAULT = ['♂', '♄', '♀']; // 462: 4th, 6th, 2nd planet
+const MORSE = { 0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.' };
+
+// Morse timeline of the locker code: [lit, seconds]
+const U = 0.26, SEG = [];
+CODES.locker.split('').forEach((d, i, all) => MORSE[d].split('').forEach((s, j, sy) => {
+  SEG.push([1, s === '.' ? U : 3 * U]);
+  SEG.push([0, j < sy.length - 1 ? U : i < all.length - 1 ? 5 * U : 14 * U]);
+}));
+const SEG_T = SEG.reduce((a, s) => a + s[1], 0);
+function morseAt(t) {
+  let x = t % SEG_T;
+  for (let i = 0; i < SEG.length; i++) { if (x < SEG[i][1]) return i; x -= SEG[i][1]; }
+  return 0;
+}
+
+const fresh = () => ({
+  started: false, won: false, room: 0, elapsed: 0, hints: 0, hintsSeen: {},
+  noteRead: false, painting: false, safe: false, keyTaken: false, chest: false, scrollRead: false, door: false,
+  powered: false, board: [...LIGHTS_START], lockerOpen: false, lensTaken: false, lensPlaced: false,
+  skySeen: false, paperFound: false, dials: [0, 0, 0], vault: false,
+});
+let state = fresh();
+let yaw = 0, pitch = -0.05, busy = false;
+
+/* ---------- renderer ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0f17);
+scene.fog = new THREE.Fog(0x0d0f17, 7, 16);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 50);
+camera.rotation.order = 'YXZ';
+camera.position.set(0, EYE, 1.8);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+$('#stage').appendChild(renderer.domElement);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ---------- helpers ---------- */
+let P = scene; // parent for the room being built
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, ...o });
+function mesh(geo, m, x, y, z, parent = P) {
+  const o = new THREE.Mesh(geo, typeof m === 'number' ? mat(m) : m);
+  o.position.set(x, y, z); parent.add(o); return o;
+}
+const box = (w, h, d, m, x, y, z, parent) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z, parent);
+const UP = new THREE.Vector3(0, 1, 0);
+function stick(a, b, r, m, parent) {
+  const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), d = vb.clone().sub(va);
+  const o = mesh(new THREE.CylinderGeometry(r, r, d.length(), 6), m, 0, 0, 0, parent);
+  o.position.copy(va).add(vb).multiplyScalar(0.5);
+  o.quaternion.setFromUnitVectors(UP, d.normalize());
+  return o;
+}
+const group = (x, y, z, parent = P) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; };
+function interactive(obj, id, label) {
+  obj.userData.action = id; obj.userData.label = label;
+  const own = m => { const n = m.clone(); n.userData.baseEm = n.emissive ? n.emissive.getHex() : 0; return n; };
+  obj.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(own) : own(m.material); });
+  return obj;
+}
+function glow(obj, on) {
+  if (!obj) return;
+  obj.traverse(m => {
+    if (!m.isMesh) return;
+    (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => { if (x.emissive) x.emissive.setHex(on ? 0x4a3414 : x.userData.baseEm); });
+  });
+}
+function setEm(meshObj, color, em) {
+  const m = meshObj.material;
+  m.color.setHex(color); m.userData.baseEm = em; m.emissive.setHex(em);
+}
+function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+const tex = c => new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.9 });
+function seeded(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+/* ---------- canvas art ---------- */
+function drawClock(g, s) {
+  const c = s / 2;
+  g.clearRect(0, 0, s, s);
+  g.fillStyle = '#efe3c8'; g.beginPath(); g.arc(c, c, c * 0.97, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#3a2c1c'; g.lineWidth = s * 0.025; g.stroke();
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2, big = i % 5 === 0, r1 = c * (big ? 0.76 : 0.84), r2 = c * 0.89;
+    g.lineWidth = big ? s * 0.02 : s * 0.006;
+    g.beginPath(); g.moveTo(c + Math.sin(a) * r1, c - Math.cos(a) * r1); g.lineTo(c + Math.sin(a) * r2, c - Math.cos(a) * r2); g.stroke();
+  }
+  g.fillStyle = '#3a2c1c'; g.font = `700 ${s * 0.13}px Vazirmatn, Tahoma, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  [[12, 0], [3, 90], [6, 180], [9, 270]].forEach(([n, d]) => {
+    const a = d * Math.PI / 180; g.fillText(fa(n), c + Math.sin(a) * c * 0.58, c - Math.cos(a) * c * 0.58);
+  });
+  const hand = (a, len, w) => {
+    g.strokeStyle = '#21180f'; g.lineWidth = w; g.lineCap = 'round'; g.beginPath();
+    g.moveTo(c - Math.sin(a) * len * 0.15, c + Math.cos(a) * len * 0.15);
+    g.lineTo(c + Math.sin(a) * len, c - Math.cos(a) * len); g.stroke();
+  };
+  hand((25 / 60) / 12 * Math.PI * 2, c * 0.42, s * 0.045); // hour hand: 12:25
+  hand(25 / 60 * Math.PI * 2, c * 0.72, s * 0.022);         // minute hand
+  g.fillStyle = '#b8873a'; g.beginPath(); g.arc(c, c, s * 0.03, 0, Math.PI * 2); g.fill();
+}
+function paintingCanvas() {
+  const [c, g] = canvas(512, 384);
+  ['#1f2a4d', '#33396a', '#5b4a7b', '#9a5f78', '#d07e66', '#f0a75e'].forEach((col, i) => { g.fillStyle = col; g.fillRect(0, i * 42, 512, 43); });
+  g.fillStyle = '#ffd27a'; g.beginPath(); g.arc(350, 205, 42, 0, Math.PI * 2); g.fill();
+  const mountain = (x, peak, w, lit, shade) => {
+    g.fillStyle = lit; g.beginPath(); g.moveTo(x - w, 330); g.lineTo(x, peak); g.lineTo(x, 330); g.fill();
+    g.fillStyle = shade; g.beginPath(); g.moveTo(x, peak); g.lineTo(x + w, 330); g.lineTo(x, 330); g.fill();
+  };
+  mountain(140, 120, 190, '#5c6f8f', '#3c4a66');
+  mountain(390, 160, 170, '#4f6a7e', '#34465a');
+  mountain(260, 200, 150, '#3f5a5c', '#2a3f44');
+  g.fillStyle = '#e8ecf2';
+  g.beginPath(); g.moveTo(140, 120); g.lineTo(112, 160); g.lineTo(140, 150); g.lineTo(162, 162); g.fill();
+  g.fillStyle = '#2b3a3a'; g.fillRect(0, 328, 512, 56);
+  g.fillStyle = '#22302f'; g.beginPath(); g.moveTo(0, 384); g.lineTo(0, 340); g.lineTo(200, 350); g.lineTo(512, 336); g.lineTo(512, 384); g.fill();
+  return c;
+}
+function spineCanvas(b) {
+  const [c, g] = canvas(64, 256);
+  g.fillStyle = '#' + b.c.toString(16).padStart(6, '0'); g.fillRect(0, 0, 64, 256);
+  const light = b.id === 'white' || b.id === 'yellow';
+  g.fillStyle = light ? 'rgba(0,0,0,.28)' : 'rgba(255,215,140,.6)';
+  g.fillRect(0, 22, 64, 6); g.fillRect(0, 228, 64, 6);
+  g.fillStyle = light ? '#2a1f14' : '#f3e6c8';
+  g.font = '700 58px Vazirmatn, Tahoma, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(fa(b.n), 32, 132);
+  return c;
+}
+function noteCanvas() {
+  const [c, g] = canvas(128, 170);
+  g.fillStyle = '#efe3c8'; g.fillRect(0, 0, 128, 170);
+  g.fillStyle = '#7a6a55';
+  for (let y = 26; y < 150; y += 14) g.fillRect(16 + (y % 3) * 4, y, 92 - (y % 5) * 6, 3);
+  return c;
+}
+function starfield(g, s, n, seed) {
+  const rnd = seeded(seed);
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = `rgba(255,255,255,${0.2 + rnd() * 0.55})`;
+    const z = rnd() < 0.9 ? s / 400 : s / 200;
+    g.fillRect(rnd() * s, rnd() * s, z, z);
+  }
+}
+function windowCanvas() {
+  const [c, g] = canvas(256, 256);
+  const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#0b1030'); grd.addColorStop(1, '#2a3570');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  starfield(g, 256, 120, 11);
+  g.fillStyle = '#f4ecd0'; g.beginPath(); g.arc(160, 90, 34, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#121845'; g.beginPath(); g.arc(176, 80, 30, 0, Math.PI * 2); g.fill();
+  return c;
+}
+function drawSky(g, s) {
+  const c = s / 2;
+  g.fillStyle = '#000'; g.fillRect(0, 0, s, s);
+  g.save(); g.beginPath(); g.arc(c, c, s * 0.48, 0, Math.PI * 2); g.clip();
+  const grd = g.createRadialGradient(c, c, 0, c, c, s * 0.5); grd.addColorStop(0, '#1b2350'); grd.addColorStop(1, '#070912');
+  g.fillStyle = grd; g.fillRect(0, 0, s, s);
+  starfield(g, s, 260, 7);
+  // an hourglass drawn in stars: two triangles meeting at the waist, with posts at the sides
+  g.translate(c, c); g.rotate(0.18);
+  const w = s * 0.17, h = s * 0.24;
+  const pt = { A: [-w, -h], B: [w, -h], C: [0, 0], D: [-w, h], E: [w, h], F: [-w * 1.4, -h], G: [-w * 1.4, h], I: [w * 1.4, -h], J: [w * 1.4, h] };
+  g.strokeStyle = 'rgba(150,180,255,.4)'; g.lineWidth = s * 0.004;
+  ['AB', 'AC', 'BC', 'CD', 'CE', 'DE', 'FG', 'IJ', 'AF', 'BI', 'DG', 'EJ'].forEach(([p, q]) => {
+    g.beginPath(); g.moveTo(...pt[p]); g.lineTo(...pt[q]); g.stroke();
+  });
+  const star = (x, y, r) => {
+    const sg = g.createRadialGradient(x, y, 0, x, y, r * 4); sg.addColorStop(0, 'rgba(255,255,255,1)'); sg.addColorStop(0.25, 'rgba(200,220,255,.6)'); sg.addColorStop(1, 'rgba(200,220,255,0)');
+    g.fillStyle = sg; g.beginPath(); g.arc(x, y, r * 4, 0, Math.PI * 2); g.fill();
+  };
+  Object.values(pt).forEach(([x, y]) => star(x, y, s * 0.008));
+  const rnd = seeded(5);
+  for (let i = 0; i < 16; i++) { const t = rnd(), yy = h * (0.55 + 0.4 * rnd()); star((t - 0.5) * 2 * w * (yy / h) * 0.8, yy, s * 0.003); }
+  g.restore();
+  g.strokeStyle = '#222'; g.lineWidth = s * 0.03; g.beginPath(); g.arc(c, c, s * 0.48, 0, Math.PI * 2); g.stroke();
+}
+function posterCanvas() {
+  const [c, g] = canvas(1024, 640);
+  g.fillStyle = '#141a33'; g.fillRect(0, 0, 1024, 640);
+  starfield(g, 1024, 160, 3);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#f2b356'; g.font = '400 64px Lalezar, Vazirmatn, Tahoma, sans-serif'; g.fillText('منظومه‌ی شمسی', 512, 80);
+  g.fillStyle = '#ffc94a'; g.beginPath(); g.arc(1040, 330, 120, 0, Math.PI * 2); g.fill();
+  PLANETS.forEach((p, i) => {
+    const x = 860 - i * 104, y = 300;
+    g.fillStyle = p.col; g.beginPath(); g.arc(x, y, p.r, 0, Math.PI * 2); g.fill();
+    if (p.ring) { g.strokeStyle = '#c9b27a'; g.lineWidth = 4; g.beginPath(); g.ellipse(x, y, p.r * 1.7, p.r * 0.45, -0.3, 0, Math.PI * 2); g.stroke(); }
+    g.fillStyle = '#f1e7d3';
+    g.font = '700 44px Vazirmatn, Tahoma, sans-serif'; g.fillText(fa(i + 1), x, 410);
+    g.font = '500 26px Vazirmatn, Tahoma, sans-serif'; g.fillText(p.name, x, 462);
+    g.font = '44px "Noto Sans Symbols", "Segoe UI Symbol", "DejaVu Sans", sans-serif'; g.fillText(p.sym, x, 535);
+  });
+  return c;
+}
+
+/* ---------- rooms ---------- */
+const ROOMS = [
+  { x0: 0, spawn: { x: 0, z: 1.8 }, colliders: [[-3.35, -1.85, 2.9, 3.7], [2.12, 3.08, 2.9, 3.5], [3.58, 4, -2.32, -0.68], [-3.75, -2.85, -3.75, -2.85]] },
+  { x0: 30, spawn: { x: 30, z: 2.6 }, colliders: [[-3.1, -2.3, -0.9, -0.1], [-3.35, -1.85, 2.9, 3.7], [3.48, 4, -2.8, -2.0], [3.55, 4, 1.15, 2.05], [2.5, 3.1, -3.6, -3.0]] },
+];
+const BOOKS = [
+  { id: 'green', name: 'سبز', c: 0x3f8f4f, n: 1, h: 0.36, t: 0.1 },
+  { id: 'brown', name: 'قهوه‌ای', c: 0x6b4423, n: 5, h: 0.32, t: 0.09 },
+  { id: 'blue', name: 'آبی', c: 0x2f5fa8, n: 7, h: 0.38, t: 0.11 },
+  { id: 'red', name: 'قرمز', c: 0xb83a32, n: 3, h: 0.34, t: 0.1 },
+  { id: 'white', name: 'سفید', c: 0xe8e2d4, n: 2, h: 0.3, t: 0.08 },
+  { id: 'yellow', name: 'زرد', c: 0xe0b52c, n: 8, h: 0.35, t: 0.1 },
+];
+let hemi, amb, ceil1, painting, safePivot, key, lidPivot, doorPivot, outLight, led;
+let r2main, bulbs2 = [], panelLamps = [], lockerPivot, lens, scopeLens, vaultPivot, outLight2, lanternGlass, lanternLight;
+
+function desk(DX, DZ) {
+  box(1.5, 0.06, 0.75, WOOD, DX, 0.76, DZ);
+  [[-0.68, -0.32], [0.68, -0.32], [-0.68, 0.32], [0.68, 0.32]].forEach(([a, b]) => box(0.06, 0.73, 0.06, WOOD_D, DX + a, 0.365, DZ + b));
+  box(0.6, 0.14, 0.65, WOOD_D, DX + 0.35, 0.66, DZ);
+}
+function walls(color, low) {
+  box(0.2, H, 8.4, color, -4.1, H / 2, 0); box(0.2, H, 8.4, color, 4.1, H / 2, 0); box(8.4, H, 0.2, color, 0, H / 2, 4.1);
+  if (low) { box(0.03, 1, 8, low, -3.985, 0.5, 0); box(0.03, 1, 8, low, 3.985, 0.5, 0); box(8, 1, 0.03, low, 0, 0.5, 3.985); }
+}
+
+function buildRoom1() {
+  P = group(ROOMS[0].x0, 0, 0, scene);
+  const planks = [0x6b4a33, 0x5f422e, 0x74513a, 0x664631].map(c => mat(c));
+  for (let i = 0; i < 16; i++) box(0.5, 0.05, 8, planks[i % 4], -3.75 + i * 0.5, -0.025, 0).userData.floor = true;
+  box(3.2, 0.012, 2.4, 0x6e2f33, 0, 0.006, 0.4).userData.floor = true;
+  box(2.8, 0.014, 2.0, 0x9b4a3e, 0, 0.008, 0.4).userData.floor = true;
+  const diamond = box(0.9, 0.016, 0.9, 0xd08a4a, 0, 0.01, 0.4); diamond.rotation.y = Math.PI / 4; diamond.userData.floor = true;
+
+  const WALL = 0x3f5f6e, LOW = 0x2b4451;
+  walls(WALL, LOW);
+  box(3.6, H, 0.2, WALL, -2.4, H / 2, -4.1); box(3.6, H, 0.2, WALL, 2.4, H / 2, -4.1);
+  box(1.2, H - 2.25, 0.2, WALL, 0, 2.25 + (H - 2.25) / 2, -4.1);
+  box(3.4, 1, 0.03, LOW, -2.3, 0.5, -3.985); box(3.4, 1, 0.03, LOW, 2.3, 0.5, -3.985);
+  box(8.4, 0.2, 8.4, 0x262b3a, 0, H + 0.1, 0);
+  box(0.25, 0.18, 8, 0x3a2a1e, -2, H - 0.09, 0); box(0.25, 0.18, 8, 0x3a2a1e, 2, H - 0.09, 0);
+
+  box(0.02, 0.5, 0.02, 0x1a1a1a, 0, H - 0.25, 0);
+  const shade = mesh(new THREE.ConeGeometry(0.4, 0.28, 7, 1, true), mat(0x2e6e6a, { side: THREE.DoubleSide }), 0, H - 0.6, 0);
+  const bulb = mesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), 0, H - 0.72, 0);
+  shade.userData.noShadow = bulb.userData.noShadow = true;
+  ceil1 = new THREE.PointLight(0xffd9a0, 1.15, 14, 1.4);
+  ceil1.position.set(0, H - 0.82, 0); ceil1.castShadow = true;
+  ceil1.shadow.mapSize.set(1024, 1024); ceil1.shadow.bias = -0.004; ceil1.shadow.camera.near = 0.1;
+  P.add(ceil1);
+
+  // exit door + keypad
+  const FRAME = 0x4a3324;
+  box(0.12, 2.35, 0.1, FRAME, -0.66, 1.175, -3.97); box(0.12, 2.35, 0.1, FRAME, 0.66, 1.175, -3.97); box(1.44, 0.12, 0.1, FRAME, 0, 2.31, -3.97);
+  doorPivot = group(-0.6, 0, -4.04);
+  const door = group(0, 0, 0, doorPivot);
+  box(1.2, 2.25, 0.08, 0x8a5a3a, 0.6, 1.125, 0, door);
+  box(0.8, 0.7, 0.02, 0x7a4e32, 0.6, 1.65, 0.05, door); box(0.8, 0.7, 0.02, 0x7a4e32, 0.6, 0.7, 0.05, door);
+  mesh(new THREE.IcosahedronGeometry(0.045, 0), mat(GOLD, { metalness: 0.6, roughness: 0.4 }), 1.05, 1.05, 0.08, door);
+  interactive(door, 'door', 'در خروج');
+  const outside = mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: 0xfff3d6, fog: false }), 0, 1.6, -4.6);
+  outside.userData.noShadow = true;
+  outLight = new THREE.PointLight(0xfff0d0, 0, 9); outLight.position.set(0, 1.4, -3.6); P.add(outLight);
+  const pad = group(0.98, 1.3, -3.97);
+  box(0.22, 0.32, 0.04, 0x22252e, 0, 0, 0, pad);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) box(0.045, 0.04, 0.015, 0xb9bccb, (c - 1) * 0.06, 0.07 - r * 0.055, 0.025, pad);
+  led = box(0.05, 0.02, 0.015, mat(0xff5544, { emissive: 0xaa2211 }), 0, 0.13, 0.025, pad);
+  interactive(pad, 'doorpad', 'صفحه‌کلید در');
+
+  // wall safe behind the painting
+  const sm = mat(0x59626e, { metalness: 0.5, roughness: 0.5 });
+  const safe = group(0, 0, 0);
+  box(0.02, 0.66, 0.66, 0x15171c, -3.99, 1.65, 0, safe);
+  box(0.2, 0.05, 0.7, sm, -3.9, 1.975, 0, safe); box(0.2, 0.05, 0.7, sm, -3.9, 1.325, 0, safe);
+  box(0.2, 0.6, 0.05, sm, -3.9, 1.65, 0.325, safe); box(0.2, 0.6, 0.05, sm, -3.9, 1.65, -0.325, safe);
+  safePivot = group(-3.79, 1.65, 0.3, safe);
+  box(0.04, 0.6, 0.6, sm, 0, 0, -0.3, safePivot);
+  mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.03, 8), mat(0x2a2e36, { metalness: 0.6 }), 0.03, 0.05, -0.3, safePivot).rotation.z = Math.PI / 2;
+  box(0.03, 0.03, 0.14, 0xb9bccb, 0.03, -0.14, -0.3, safePivot);
+  interactive(safe, 'safe', 'گاوصندوق');
+  key = group(-3.9, 1.62, 0.05);
+  const km = mat(GOLD, { metalness: 0.7, roughness: 0.35, emissive: 0x3a2600 });
+  mesh(new THREE.TorusGeometry(0.05, 0.016, 5, 8), km, 0, 0, 0, key).rotation.y = Math.PI / 2;
+  box(0.02, 0.02, 0.16, km, 0, 0, -0.13, key); box(0.02, 0.045, 0.02, km, 0, -0.03, -0.19, key); box(0.02, 0.035, 0.02, km, 0, -0.025, -0.15, key);
+  interactive(key, 'key', 'کلید برنجی');
+  painting = group(-3.7, 1.7, 0);
+  mesh(new THREE.PlaneGeometry(1.3, 0.95), tex(paintingCanvas()), 0.02, 0, 0, painting).rotation.y = Math.PI / 2;
+  box(0.03, 0.95, 1.3, 0x2a1d14, 0, 0, 0, painting);
+  const gilt = mat(0xb8873a, { metalness: 0.4, roughness: 0.5 });
+  box(0.07, 0.08, 1.46, gilt, 0.01, 0.515, 0, painting); box(0.07, 0.08, 1.46, gilt, 0.01, -0.515, 0, painting);
+  box(0.07, 0.95, 0.08, gilt, 0.01, 0, 0.69, painting); box(0.07, 0.95, 0.08, gilt, 0.01, 0, -0.69, painting);
+  interactive(painting, 'painting', 'تابلوی نقاشی');
+
+  // stopped clock
+  const clock = group(3.95, 2.25, 1.6);
+  mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.08, 12), 0x3a2a1e, 0, 0, 0, clock).rotation.z = Math.PI / 2;
+  const [cc, cg] = canvas(256, 256); drawClock(cg, 256);
+  mesh(new THREE.CircleGeometry(0.32, 24), tex(cc), -0.042, 0, 0, clock).rotation.y = -Math.PI / 2;
+  interactive(clock, 'clock', 'ساعت دیواری');
+
+  // bookshelf
+  const SX = 3.8, SZ = -1.5;
+  box(0.4, 2, 0.05, WOOD, SX, 1, SZ - 0.775); box(0.4, 2, 0.05, WOOD, SX, 1, SZ + 0.775); box(0.02, 2, 1.6, WOOD_D, 3.99, 1, SZ);
+  [0.02, 0.5, 1, 1.5, 1.98].forEach(y => box(0.4, 0.04, 1.5, WOOD, SX, y, SZ));
+  let z = SZ - 0.7;
+  BOOKS.forEach(b => {
+    const side = mat(b.c);
+    const m = mesh(new THREE.BoxGeometry(0.26, b.h, b.t), [side, tex(spineCanvas(b)), side, side, side, side], 3.76, 1.02 + b.h / 2, z + b.t / 2);
+    z += b.t + 0.015;
+    interactive(m, 'book:' + b.id, 'کتاب ' + b.name);
+  });
+  mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.06, 6), 0x3a2a1e, 3.78, 1.05, -1.0);
+  mesh(new THREE.IcosahedronGeometry(0.1, 1), 0x4f8fb0, 3.78, 1.18, -1.0);
+  mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.22, 7), 0x3a8a8a, 3.78, 1.63, -2.0);
+  mesh(new THREE.IcosahedronGeometry(0.08, 0), 0xc9a26b, 3.78, 1.6, -1.6);
+  box(0.2, 0.12, 0.25, 0x8a3b3b, 3.78, 1.58, -1.05);
+  [0x556070, 0x6a7080, 0x4a5262].forEach((col, i) => box(0.24, 0.05, 0.32, col, 3.78, 0.545 + i * 0.05, -1.9));
+  box(0.3, 0.3, 0.4, WOOD_D, 3.78, 0.67, -1.1);
+  box(0.3, 0.35, 0.5, 0x4d5a66, 3.78, 0.215, -1.6);
+  mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.14, 6), 0xb0603c, 3.8, 2.07, -1.2);
+  mesh(new THREE.IcosahedronGeometry(0.14, 0), 0x4f9a58, 3.8, 2.24, -1.2);
+
+  // desk, lamp, note
+  const DX = -2.6, DZ = 3.3;
+  desk(DX, DZ);
+  mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.04, 6), 0x2e6e6a, DX - 0.5, 0.81, DZ + 0.15);
+  mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 5), 0x222222, DX - 0.5, 1.01, DZ + 0.15);
+  mesh(new THREE.ConeGeometry(0.17, 0.2, 6), mat(0xe0a050, { emissive: 0x6b3a10 }), DX - 0.5, 1.22, DZ + 0.15);
+  const lamp = new THREE.PointLight(0xffb15a, 0.9, 4); lamp.position.set(DX - 0.5, 1.05, DZ + 0.15); P.add(lamp);
+  mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.1, 7), 0xd8d2c4, DX + 0.55, 0.84, DZ - 0.15);
+  const paperM = mat(PAPER);
+  const note = mesh(new THREE.BoxGeometry(0.21, 0.006, 0.28), [paperM, paperM, tex(noteCanvas()), paperM, paperM, paperM], DX + 0.05, 0.793, DZ - 0.05);
+  note.rotation.y = 0.25;
+  interactive(note, 'note', 'یادداشت');
+
+  // locked chest + scroll
+  const cw = 0x8a5a34, band = 0x3b3f47;
+  const chest = group(2.6, 0, 3.2);
+  box(0.9, 0.05, 0.55, cw, 0, 0.025, 0, chest);
+  box(0.9, 0.45, 0.05, cw, 0, 0.225, -0.25, chest); box(0.9, 0.45, 0.05, cw, 0, 0.225, 0.25, chest);
+  box(0.05, 0.45, 0.45, cw, -0.425, 0.225, 0, chest); box(0.05, 0.45, 0.45, cw, 0.425, 0.225, 0, chest);
+  box(0.8, 0.02, 0.45, 0x3a2414, 0, 0.055, 0, chest);
+  [-0.28, 0.28].forEach(x => { box(0.06, 0.46, 0.02, band, x, 0.225, -0.285, chest); box(0.06, 0.46, 0.02, band, x, 0.225, 0.285, chest); });
+  box(0.12, 0.14, 0.02, mat(GOLD, { metalness: 0.6, roughness: 0.4 }), 0, 0.36, -0.29, chest);
+  lidPivot = group(0, 0.45, 0.275, chest);
+  box(0.92, 0.12, 0.57, cw, 0, 0.06, -0.285, lidPivot);
+  box(0.92, 0.06, 0.4, cw, 0, 0.15, -0.285, lidPivot);
+  [-0.28, 0.28].forEach(x => { box(0.06, 0.02, 0.58, band, x, 0.125, -0.285, lidPivot); box(0.06, 0.12, 0.02, band, x, 0.06, -0.575, lidPivot); });
+  interactive(chest, 'chest', 'صندوقچه');
+  const scroll = group(2.6, 0.12, 3.2); scroll.rotation.y = 0.3;
+  mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 6), PAPER, 0, 0, 0, scroll).rotation.z = Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.04, 6), 0xb83a32, 0, 0, 0, scroll).rotation.z = Math.PI / 2;
+  interactive(scroll, 'scroll', 'طومار');
+
+  // plant
+  mesh(new THREE.CylinderGeometry(0.25, 0.18, 0.45, 7), 0xb0603c, -3.3, 0.225, -3.3);
+  mesh(new THREE.IcosahedronGeometry(0.45, 0), 0x3f7d4a, -3.3, 0.9, -3.3);
+  mesh(new THREE.IcosahedronGeometry(0.32, 0), 0x4f9a58, -3.15, 1.25, -3.2);
+  mesh(new THREE.IcosahedronGeometry(0.25, 0), 0x356b40, -3.5, 1.15, -3.4);
+}
+
+function buildRoom2() {
+  P = group(ROOMS[1].x0, 0, 0, scene);
+  const t1 = mat(0x3b3f52), t2 = mat(0x31354a);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) box(1, 0.05, 1, (i + j) % 2 ? t1 : t2, -3.5 + i, -0.025, -3.5 + j).userData.floor = true;
+  mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.016, 10), 0x5b3a6e, 0, 0.008, 0.3).userData.floor = true;
+  mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.018, 10), 0x7a4f8a, 0, 0.012, 0.3).userData.floor = true;
+  mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.02, 5), 0xe0b04a, 0, 0.016, 0.3).userData.floor = true;
+
+  const WALL = 0x2b3150;
+  walls(WALL, 0x222740);
+  box(3.5, H, 0.2, WALL, -2.45, H / 2, -4.1); box(3.5, H, 0.2, WALL, 2.45, H / 2, -4.1);
+  box(1.4, 0.55, 0.2, WALL, 0, 0.275, -4.1); box(1.4, H - 1.95, 0.2, WALL, 0, 1.95 + (H - 1.95) / 2, -4.1);
+  box(3.3, 1, 0.03, 0x222740, -2.35, 0.5, -3.985); box(3.3, 1, 0.03, 0x222740, 2.35, 0.5, -3.985);
+
+  // low-poly dome full of painted stars
+  mesh(new THREE.SphereGeometry(5.7, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x1a1f3d, { side: THREE.BackSide }), 0, H, 0).userData.noShadow = true;
+  const rnd = seeded(3), pts = [];
+  for (let i = 0; i < 280; i++) {
+    const th = rnd() * Math.PI * 2, ph = Math.acos(0.05 + rnd() * 0.95), r = 5.6;
+    pts.push(r * Math.sin(ph) * Math.cos(th), H + r * Math.cos(ph), r * Math.sin(ph) * Math.sin(th));
+  }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 0.06, fog: false }));
+  stars.raycast = () => {}; P.add(stars);
+
+  // chandelier, dark until the power comes back
+  box(0.02, 1.1, 0.02, 0x1a1a1a, 0, H + 0.1, 0);
+  mesh(new THREE.TorusGeometry(0.5, 0.03, 4, 10), mat(GOLD, { metalness: 0.6, roughness: 0.4 }), 0, H - 0.45, 0).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2;
+    const b = mesh(new THREE.IcosahedronGeometry(0.05, 0), new THREE.MeshBasicMaterial({ color: 0x444444 }), Math.cos(a) * 0.5, H - 0.4, Math.sin(a) * 0.5);
+    b.userData.noShadow = true; bulbs2.push(b);
+  }
+  r2main = new THREE.PointLight(0xffe0b0, 0, 14, 1.4); r2main.position.set(0, H - 0.6, 0); P.add(r2main);
+  const moon = new THREE.PointLight(0x6f8cff, 0.7, 10); moon.position.set(-3.3, 2.1, -0.5); P.add(moon);
+
+  // entry door (locked behind you)
+  const FRAME = 0x3a2a3e;
+  box(0.12, 2.35, 0.1, FRAME, -0.66, 1.175, 3.97); box(0.12, 2.35, 0.1, FRAME, 0.66, 1.175, 3.97); box(1.44, 0.12, 0.1, FRAME, 0, 2.31, 3.97);
+  const entry = group(0, 0, 3.97);
+  box(1.2, 2.25, 0.06, 0x5a3e5e, 0, 1.125, 0, entry);
+  mesh(new THREE.IcosahedronGeometry(0.045, 0), mat(GOLD, { metalness: 0.6 }), -0.45, 1.05, -0.05, entry);
+  interactive(entry, 'entry', 'در ورودی');
+
+  // vault door in the back wall
+  const steel = mat(0x5d6676, { metalness: 0.55, roughness: 0.45 });
+  mesh(new THREE.TorusGeometry(1.08, 0.1, 4, 12), steel, 0, 1.25, -3.95);
+  vaultPivot = group(1.0, 1.25, -3.85);
+  const vault = group(0, 0, 0, vaultPivot);
+  mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.22, 12), steel, -1, 0, 0, vault).rotation.x = Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.04, 12), 0x4a5262, -1, 0, 0.12, vault).rotation.x = Math.PI / 2;
+  mesh(new THREE.TorusGeometry(0.3, 0.035, 4, 10), mat(GOLD, { metalness: 0.6 }), -1, -0.32, 0.16, vault);
+  for (let i = 0; i < 3; i++) { const s = box(0.6, 0.03, 0.03, mat(GOLD, { metalness: 0.6 }), -1, -0.32, 0.16, vault); s.rotation.z = i * Math.PI / 3; }
+  [-0.3, 0, 0.3].forEach(dx => {
+    mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10), 0x22252e, -1 + dx, 0.3, 0.15, vault).rotation.x = Math.PI / 2;
+    box(0.015, 0.05, 0.01, 0xf1e7d3, -1 + dx, 0.36, 0.19, vault);
+  });
+  interactive(vault, 'vault', 'در گاوصندوقی');
+  mesh(new THREE.PlaneGeometry(3, 2.6), new THREE.MeshBasicMaterial({ color: 0xdfe8ff, fog: false }), 0, 1.3, -4.6).userData.noShadow = true;
+  outLight2 = new THREE.PointLight(0xe8eeff, 0, 9); outLight2.position.set(0, 1.4, -3.4); P.add(outLight2);
+
+  // round window, telescope
+  mesh(new THREE.CircleGeometry(0.55, 14), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(windowCanvas()), fog: false }), -3.97, 2.05, -0.5).rotation.y = Math.PI / 2;
+  mesh(new THREE.TorusGeometry(0.58, 0.05, 4, 14), mat(GOLD, { metalness: 0.6 }), -3.96, 2.05, -0.5).rotation.y = Math.PI / 2;
+  box(0.02, 1.1, 0.03, 0x3b2a20, -3.95, 2.05, -0.5); box(0.02, 0.03, 1.1, 0x3b2a20, -3.95, 2.05, -0.5);
+  const scope = group(-2.7, 0, -0.5);
+  const brass = mat(0xb8873a, { metalness: 0.5, roughness: 0.45 });
+  [0, 2.1, 4.2].forEach(a => stick([0, 0.95, 0], [Math.sin(a) * 0.35, 0, Math.cos(a) * 0.35], 0.022, 0x3a2a1e, scope));
+  stick([0.3, 0.95, 0], [-0.55, 1.5, 0], 0.09, mat(0x2e4a6e), scope);
+  stick([-0.55, 1.5, 0], [-0.62, 1.545, 0], 0.11, brass, scope);
+  stick([0.3, 0.95, 0], [0.42, 0.87, 0], 0.035, brass, scope);
+  scopeLens = stick([-0.62, 1.545, 0], [-0.635, 1.555, 0], 0.095, mat(0x9fd8ff, { emissive: 0x2a6080, metalness: 0.2, roughness: 0.2 }), scope);
+  interactive(scope, 'telescope', 'تلسکوپ');
+
+  // power panel (lights-out puzzle)
+  const panel = group(-3.95, 1.45, -2.6);
+  box(0.08, 0.7, 0.55, 0x4a505c, 0, 0, 0, panel);
+  box(0.02, 0.05, 0.45, 0xf2b356, 0.05, 0.3, 0, panel);
+  for (let i = 0; i < 9; i++) {
+    const r = Math.floor(i / 3), c = i % 3;
+    panelLamps.push(box(0.03, 0.1, 0.1, mat(0x3a3226, { emissive: 0 }), 0.055, (1 - r) * 0.16 - 0.04, (1 - c) * 0.15, panel));
+  }
+  interactive(panel, 'panel', 'تابلوی برق');
+
+  // planet poster
+  const poster = group(-3.96, 1.75, 2.1);
+  mesh(new THREE.PlaneGeometry(1.6, 1.0), tex(posterCanvas()), 0.02, 0, 0, poster).rotation.y = Math.PI / 2;
+  box(0.03, 1.06, 1.66, 0x1f1a14, 0, 0, 0, poster);
+  interactive(poster, 'poster', 'پوستر منظومه‌ی شمسی');
+
+  // metal locker with keypad
+  const lm = mat(0x5a6b6a, { metalness: 0.4, roughness: 0.55 });
+  const locker = group(3.75, 0, -2.4);
+  box(0.02, 1.9, 0.8, lm, 0.23, 0.95, 0, locker);
+  box(0.5, 1.9, 0.03, lm, 0, 0.95, 0.385, locker); box(0.5, 1.9, 0.03, lm, 0, 0.95, -0.385, locker);
+  box(0.5, 0.03, 0.8, lm, 0, 1.885, 0, locker); box(0.5, 0.03, 0.8, lm, 0, 0.015, 0, locker);
+  box(0.46, 0.02, 0.76, 0x3e4a4a, 0, 1.0, 0, locker);
+  lockerPivot = group(-0.25, 0.95, 0.4, locker);
+  box(0.03, 1.88, 0.79, lm, 0, 0, -0.395, lockerPivot);
+  [0.6, 0.65, 0.7].forEach(y => box(0.01, 0.015, 0.4, 0x3e4a4a, -0.02, y, -0.395, lockerPivot));
+  box(0.02, 0.16, 0.12, 0x1e2128, -0.02, 0.15, -0.62, lockerPivot);
+  box(0.03, 0.15, 0.03, 0xb9bccb, -0.03, -0.05, -0.72, lockerPivot);
+  interactive(locker, 'locker', 'کمد فلزی');
+  lens = group(3.8, 1.1, -2.4);
+  mesh(new THREE.TorusGeometry(0.08, 0.015, 4, 10), brass, 0, 0, 0, lens).rotation.y = Math.PI / 2;
+  mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.012, 10), mat(0x9fd8ff, { emissive: 0x1a3a50, transparent: true, opacity: 0.75 }), 0, 0, 0, lens).rotation.z = Math.PI / 2;
+  interactive(lens, 'lens', 'عدسی');
+
+  // cabinet with the hourglass
+  box(0.44, 0.9, 0.9, WOOD_D, 3.78, 0.45, 1.6); box(0.48, 0.04, 0.94, WOOD, 3.78, 0.92, 1.6);
+  const hg = group(3.75, 0.94, 1.8);
+  const glass = mat(0xcfe7f0, { transparent: true, opacity: 0.45 });
+  mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 6), WOOD, 0, 0.015, 0, hg);
+  mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 6), WOOD, 0, 0.345, 0, hg);
+  mesh(new THREE.ConeGeometry(0.09, 0.15, 6), glass, 0, 0.105, 0, hg);
+  mesh(new THREE.ConeGeometry(0.09, 0.15, 6), glass, 0, 0.255, 0, hg).rotation.x = Math.PI;
+  mesh(new THREE.ConeGeometry(0.065, 0.06, 6), 0xe0b04a, 0, 0.06, 0, hg);
+  [0, 2.1, 4.2].forEach(a => mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 4), WOOD, Math.sin(a) * 0.105, 0.18, Math.cos(a) * 0.105, hg));
+  interactive(hg, 'hourglass', 'ساعت شنی');
+  mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.06, 6), 0x3a2a1e, 3.78, 0.97, 1.35);
+  mesh(new THREE.IcosahedronGeometry(0.11, 1), 0x4f8fb0, 3.78, 1.11, 1.35);
+
+  // desk with the telegraph notebook and a candle
+  const DX = -2.6, DZ = 3.3;
+  desk(DX, DZ);
+  const book = group(DX + 0.05, 0.795, DZ - 0.05); book.rotation.y = -0.2;
+  box(0.36, 0.012, 0.25, 0x5a2a2a, 0, 0, 0, book);
+  const pm = mat(PAPER), pages = tex(noteCanvas());
+  [-1, 1].forEach(s => { const p = box(0.165, 0.012, 0.23, [pm, pm, pages, pm, pm, pm], s * 0.085, 0.012, 0, book); p.rotation.z = -s * 0.07; });
+  interactive(book, 'notebook', 'دفترچه‌ی تلگراف‌چی');
+  mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 6), 0xefe6d2, DX - 0.5, 0.85, DZ + 0.15);
+  mesh(new THREE.IcosahedronGeometry(0.02, 0), new THREE.MeshBasicMaterial({ color: 0xffc46a }), DX - 0.5, 0.93, DZ + 0.15).userData.noShadow = true;
+  const candle = new THREE.PointLight(0xffa24a, 0.5, 2.6); candle.position.set(DX - 0.5, 1.0, DZ + 0.15); P.add(candle);
+
+  // signal lantern on a side table
+  mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.7, 6), WOOD_D, 2.8, 0.35, -3.3);
+  mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 7), WOOD, 2.8, 0.72, -3.3);
+  const lantern = group(2.8, 0.74, -3.3);
+  const iron = mat(0x2a2c32, { metalness: 0.5 });
+  box(0.2, 0.03, 0.2, iron, 0, 0.015, 0, lantern);
+  lanternGlass = box(0.14, 0.2, 0.14, mat(0x8a2a20, { emissive: 0x220500 }), 0, 0.13, 0, lantern);
+  [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => box(0.02, 0.22, 0.02, iron, a * 0.08, 0.13, b * 0.08, lantern));
+  mesh(new THREE.ConeGeometry(0.14, 0.1, 4), iron, 0, 0.29, 0, lantern).rotation.y = Math.PI / 4;
+  mesh(new THREE.TorusGeometry(0.035, 0.008, 4, 8), iron, 0, 0.36, 0, lantern);
+  interactive(lantern, 'lantern', 'فانوس علامت');
+  lanternLight = new THREE.PointLight(0xff3a2a, 0, 3.5); lanternLight.position.set(2.8, 1.0, -3.3); P.add(lanternLight);
+}
+
+function build() {
+  hemi = new THREE.HemisphereLight(0x8fa6d8, 0x3a2a20, 0.45); scene.add(hemi);
+  amb = new THREE.AmbientLight(0x404a66, 0.25); scene.add(amb);
+  buildRoom1(); buildRoom2(); P = scene;
+  scene.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = !o.userData.noShadow; });
+}
+
+/* ---------- state & animation ---------- */
+const ease = p => p * p * (3 - 2 * p);
+let anims = [];
+function makeAnims() {
+  anims = [
+    { p: 0, target: () => +state.painting, apply: p => { painting.position.z = p * 1.35; } },
+    { p: 0, target: () => +state.safe, apply: p => { safePivot.rotation.y = -p * 1.9; } },
+    { p: 0, target: () => +state.chest, apply: p => { lidPivot.rotation.x = p * 1.9; } },
+    { p: 0, target: () => +state.door, apply: p => { doorPivot.rotation.y = -p * 1.5; outLight.intensity = p * 1.6; } },
+    { p: 0, target: () => +state.lockerOpen, apply: p => { lockerPivot.rotation.y = p * 1.8; } },
+    { p: 0, target: () => +state.vault, apply: p => { vaultPivot.rotation.y = p * 1.6; outLight2.intensity = p * 1.8; } },
+  ];
+}
+function setLed(on) { setEm(led, on ? 0x55ff88 : 0xff5544, on ? 0x11aa44 : 0xaa2211); }
+function updateLights() {
+  const dark = state.room === 1 && !state.powered;
+  hemi.intensity = dark ? 0.12 : 0.45;
+  amb.intensity = dark ? 0.06 : 0.25;
+  r2main.intensity = state.powered ? 1.0 : 0;
+  bulbs2.forEach(b => b.material.color.setHex(state.powered ? 0xffe2a8 : 0x444444));
+  panelLamps.forEach((m, i) => setEm(m, state.board[i] ? 0xffc861 : 0x3a3226, state.board[i] ? 0x8a5a10 : 0));
+  scopeLens.visible = state.lensPlaced;
+  ceil1.castShadow = state.room === 0;
+}
+function applyState(s) {
+  state = { ...fresh(), ...s };
+  key.visible = !state.keyTaken;
+  lens.visible = !state.lensTaken;
+  setLed(state.door);
+  anims.forEach(a => { a.p = a.target(); a.apply(ease(a.p)); });
+  updateInv(); updateTimer(true); updateLights(); updateHintBtn();
+}
+
+/* ---------- HUD ---------- */
+const toastEl = $('#toast'), labelEl = $('#label'), slot = $('#slot');
+let toastT;
+function toast(msg, ms = 3600) {
+  toastEl.textContent = msg; toastEl.dataset.show = '1';
+  clearTimeout(toastT); toastT = setTimeout(() => toastEl.removeAttribute('data-show'), ms);
+}
+let shownSec = -1;
+function updateTimer(force) {
+  const s = Math.floor(state.elapsed);
+  if (force || s !== shownSec) { shownSec = s; $('#timer').textContent = `${ROOM_NAMES[state.room]} · ${fmt(state.elapsed)}`; }
+}
+function updateHintBtn() { $('#hintBtn').textContent = state.hints ? `راهنما (${fa(state.hints)})` : 'راهنما'; }
+const KEY_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke="#f2b356" stroke-width="3" stroke-linecap="round"><circle cx="11" cy="20" r="6"/><path d="M17 20h18M29 20v6M34 20v5"/></svg>';
+const LENS_SVG = '<svg viewBox="0 0 40 40" fill="none" stroke-width="3"><circle cx="20" cy="20" r="12" stroke="#f2b356"/><circle cx="20" cy="20" r="8" fill="#9fd8ff" fill-opacity=".5" stroke="none"/></svg>';
+function updateInv() {
+  const item = state.keyTaken && !state.chest ? ['کلید برنجی', KEY_SVG] : state.lensTaken && !state.lensPlaced ? ['عدسی تلسکوپ', LENS_SVG] : null;
+  slot.innerHTML = item ? item[1] : '';
+  slot.classList.toggle('full', !!item);
+  slot.title = item ? item[0] : 'کوله خالی است';
+}
+
+/* ---------- sound effects ---------- */
+let ac = null;
+function audio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (ac.state === 'suspended' && !document.hidden) ac.resume();
+  return ac;
+}
+function tone(f, d, type = 'sine', vol = 0.08, when = 0) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + when;
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+}
+function beepFor(d) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.frequency.value = 640;
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + 0.01);
+  g.gain.setValueAtTime(0.06, t + d - 0.02); g.gain.linearRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+}
+const click = f => tone(f, 0.07, 'square', 0.03);
+const chime = () => [660, 880, 1320].forEach((f, i) => tone(f, 0.4, 'triangle', 0.07, i * 0.09));
+const buzz = () => tone(140, 0.3, 'sawtooth', 0.05);
+const thunk = () => tone(90, 0.25, 'triangle', 0.14);
+
+/* ---------- background music (generated live, one mood per room) ---------- */
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+const SONGS = [
+  { chords: [[57, 60, 64], [53, 57, 60], [48, 55, 64], [55, 59, 62]], arp: [69, 72, 74, 76, 79, 81] },
+  { chords: [[50, 57, 62, 64], [53, 60, 65, 69], [48, 55, 62, 67], [46, 53, 58, 62]], arp: [74, 77, 79, 81, 84, 86] },
+];
+const BAR = 4.8;
+const music = { on: lsGet('sleeping-clock-music') !== false, out: null, in: null, next: 0, bar: 0, timer: null };
+const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+function musicGraph() {
+  const a = audio(); if (!a) return null;
+  if (!music.out) {
+    const out = a.createGain(), lp = a.createBiquadFilter(), dl = a.createDelay(1), fb = a.createGain(), wet = a.createGain();
+    out.gain.value = 0; lp.type = 'lowpass'; lp.frequency.value = 1800;
+    dl.delayTime.value = 0.42; fb.gain.value = 0.32; wet.gain.value = 0.35;
+    lp.connect(out); lp.connect(dl); dl.connect(fb).connect(dl); dl.connect(wet).connect(out); out.connect(a.destination);
+    music.out = out; music.in = lp;
+  }
+  return a;
+}
+function note(f, t, dur, type, vol, attack) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(music.in); o.start(t); o.stop(t + dur + 0.05);
+}
+function scheduleBar(t) {
+  const song = SONGS[state.room], ch = song.chords[music.bar % song.chords.length];
+  ch.forEach(m => { note(midi(m), t, BAR + 1.2, 'triangle', 0.05, 1.4); note(midi(m) * 1.004, t, BAR + 1.2, 'sine', 0.03, 1.8); });
+  note(midi(ch[0] - 12), t, BAR, 'sine', 0.07, 0.6);
+  for (let i = 0; i < 8; i++) if (Math.random() < 0.45) note(midi(song.arp[Math.floor(Math.random() * song.arp.length)]), t + i * BAR / 8, 1.6, 'sine', 0.035, 0.01);
+  music.bar++;
+}
+function musicTick() {
+  if (!ac || !music.on || ac.state !== 'running') return;
+  while (music.next < ac.currentTime + 1.5) { scheduleBar(music.next); music.next += BAR; }
+}
+function setMusic(on) {
+  music.on = on; lsSet('sleeping-clock-music', on);
+  const btn = $('#musicBtn');
+  btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '♪ موسیقی' : '♪ بی‌صدا';
+  const a = musicGraph(); if (!a) return;
+  const now = a.currentTime;
+  music.out.gain.cancelScheduledValues(now); music.out.gain.setTargetAtTime(on ? 0.55 : 0, now, 0.6);
+  if (on) {
+    if (music.next < now) music.next = now + 0.1;
+    if (!music.timer) music.timer = setInterval(musicTick, 400);
+    musicTick();
+  }
+}
+document.addEventListener('visibilitychange', () => { if (ac) document.hidden ? ac.suspend() : ac.resume(); });
+
+/* ---------- leaderboard: shared through the page's database, or this device only ---------- */
+const LS_SCORES = 'sleeping-clock-scores', LS_PLAYER = 'sleeping-clock-player', LS_NAME = 'sleeping-clock-name';
+const API = '/api/scores';
+const board = { mode: 'local', loading: false, rows: lsGet(LS_SCORES) || [], db: null, user: null, me: null, player: null, pending: null, newBest: false, note: '' };
+const num = v => Math.max(0, Number(v) || 0);
+const clean = r => ({ id: r.id, name: typeof r.name === 'string' ? r.name : '', mine: r.mine === true, score: num(r.score), hints: num(r.hints), at: num(r.at) });
+
+// self-hosted mode: the leaderboard service next to the page (server/scores.py)
+function playerId() {
+  let id = lsGet(LS_PLAYER);
+  if (typeof id !== 'string' || !/^[A-Za-z0-9-]{16,64}$/.test(id)) {
+    id = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+    lsSet(LS_PLAYER, id);
+  }
+  return id;
+}
+async function serverRequest(method, body) {
+  const res = method === 'GET'
+    ? await fetch(`${API}?player=${encodeURIComponent(board.player)}`, { cache: 'no-store' })
+    : await fetch(API, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { status: res.status });
+  const data = await res.json();
+  if (!data || !Array.isArray(data.rows)) throw new Error('unexpected response');
+  return data;
+}
+async function initServerBoard() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  board.player = playerId();
+  try {
+    const data = await serverRequest('GET');
+    Object.assign(board, { mode: 'server', rows: data.rows.map(clean) });
+    renderBoards();
+  } catch (e) { /* no leaderboard service here: keep this device's records */ }
+}
+async function sendName(e) {
+  e.preventDefault();
+  const run = board.pending, input = $('#playerName'), msg = $('#nameMsg'), btn = $('#nameBtn');
+  if (!run) return;
+  const name = input.value.replace(/\s+/g, ' ').trim();
+  if (!name) { msg.textContent = 'یک اسم بنویس.'; input.focus(); return; }
+  lsSet(LS_NAME, name);
+  btn.disabled = true; msg.textContent = 'در حال ثبت…';
+  try {
+    const data = await serverRequest('POST', { player: board.player, name, time: run.time, hints: run.hints });
+    Object.assign(board, { pending: null, rows: data.rows.map(clean), newBest: !!data.newBest });
+    board.note = board.newBest ? '' : 'رکورد قبلی‌ات بهتر بود و همان در جدول ماند.';
+    $('#nameForm').hidden = true;
+    $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : 'در گاوصندوقی باز شد';
+    renderBoards();
+  } catch (err) {
+    msg.textContent = err.status === 429 ? 'چند لحظه بعد دوباره امتحان کن.'
+      : err.status === 400 ? 'این رکورد پذیرفته نشد. اسم باید حداکثر ۲۴ حرف باشد.'
+      : 'سرور در دسترس نیست. رکوردت روی همین دستگاه ذخیره شد.';
+  } finally { btn.disabled = false; }
+}
+$('#nameForm').addEventListener('submit', sendName);
+
+async function initBoard() {
+  renderBoards();
+  const c = window.claude;
+  if (!c || !c.use) return initServerBoard();
+  try {
+    const [db, user] = await Promise.all([c.use('db'), c.use('user')]);
+    const id = user ? await user.id() : null;
+    if (!db || !id) return;
+    Object.assign(board, { db, user, me: id, mode: 'shared', loading: true });
+    renderBoards();
+    db.collection('scores').orderBy('score', 'asc').limit(10).onSnapshot(
+      snap => { board.loading = false; board.rows = snap.docs.map(d => clean({ id: d.id, ...d.data() })); renderBoards(); },
+      () => { Object.assign(board, { mode: 'local', loading: false, rows: lsGet(LS_SCORES) || [] }); renderBoards(); });
+  } catch (e) { /* stay on this device's records */ }
+}
+async function submitScore(run) {
+  const local = lsGet(LS_SCORES) || [];
+  const prevLocal = local.length ? Math.min(...local.map(r => r.score)) : Infinity;
+  const merged = local.concat({ ...run, at: Date.now() }).sort((a, b) => a.score - b.score).slice(0, 10);
+  lsSet(LS_SCORES, merged);
+  board.note = '';
+  if (board.mode === 'shared') {
+    try {
+      const ref = board.db.doc('scores/' + board.me);
+      const cur = await ref.get();
+      const prev = cur.exists ? Number(cur.data().score) : Infinity;
+      board.newBest = run.score < prev;
+      if (board.newBest) await ref.set({ score: run.score, time: run.time, hints: run.hints, at: Date.now() });
+    } catch (e) {
+      board.note = 'ثبت در جدول مشترک ممکن نشد؛ رکوردت روی همین دستگاه ذخیره شد.';
+      board.newBest = run.score < prevLocal;
+    }
+  } else if (board.mode === 'server') {
+    Object.assign(board, { pending: run, newBest: false });
+    $('#playerName').value = lsGet(LS_NAME) || '';
+    $('#nameMsg').textContent = '';
+    $('#nameForm').hidden = false;
+    try { board.rows = (await serverRequest('GET')).rows.map(clean); } catch (e) { /* keep the last list */ }
+  } else {
+    board.rows = merged;
+    board.newBest = run.score < prevLocal;
+  }
+  $('#winEyebrow').textContent = board.newBest ? 'رکورد جدید!' : 'در گاوصندوقی باز شد';
+  renderBoards();
+}
+async function renderBoards() {
+  const shared = board.mode === 'shared', server = board.mode === 'server';
+  const rows = board.rows.slice(0, 10);
+  const names = shared && rows.length ? await board.user.profiles(rows.map(r => r.id)) : {};
+  [[$('#boardIntro'), 5], [$('#boardWin'), 10]].forEach(([el, limit]) => {
+    el.replaceChildren();
+    if (!rows.length) {
+      const li = document.createElement('li'); li.className = 'empty';
+      li.textContent = board.loading ? 'در حال بارگذاری…' : 'هنوز کسی فرار نکرده. اولین نفر باش.';
+      el.append(li); return;
+    }
+    rows.slice(0, limit).forEach((r, i) => {
+      const li = document.createElement('li');
+      const mine = shared ? r.id === board.me : r.mine === true;
+      if (mine) li.className = 'me';
+      const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = fa(i + 1);
+      const who = document.createElement('span'); who.className = 'who';
+      who.textContent = shared ? ((names[r.id] && names[r.id].name) || 'بازیکن') + (mine ? ' (تو)' : '')
+        : server ? (r.name || 'بازیکن') + (mine ? ' (تو)' : '')
+        : new Date(r.at).toLocaleDateString('fa-IR');
+      const score = document.createElement('span'); score.className = 'score'; score.textContent = fmt(r.score);
+      const sm = document.createElement('small'); sm.textContent = r.hints ? `${fa(r.hints)} راهنما` : 'بی‌راهنما';
+      score.append(sm);
+      li.append(rank, who, score); el.append(li);
+    });
+  });
+  const note = (shared ? 'رکورد همه‌ی کسانی که این بازی را باز می‌کنند. ' : server ? 'رکورد همه‌ی بازیکنان این سایت. ' : 'رکوردهای تو روی همین دستگاه. ') + 'هر راهنما ۳۰ ثانیه جریمه دارد.' + (board.note ? ' ' + board.note : '');
+  document.querySelectorAll('[data-board-note]').forEach(p => { p.textContent = note; });
+}
+
+/* ---------- modals ---------- */
+const modal = $('#modal'), sheet = $('#sheet');
+let modalOpen = false, kp = null, morseToken = null;
+function openModal(html) {
+  sheet.innerHTML = html + '<button class="btn ghost" type="button" data-close>بستن</button>';
+  modal.hidden = false; modalOpen = true;
+  walk = pending = null; keys.clear(); setHover(null);
+  sheet.focus();
+}
+function closeModal() { modal.hidden = true; modalOpen = false; kp = null; morseToken = null; }
+modal.addEventListener('click', e => {
+  if (e.target === modal || e.target.closest('[data-close]')) return closeModal();
+  const t = e.target.closest('[data-k],[data-cell],[data-reset],[data-dial],[data-pull]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.k) kpPress(d.k);
+  else if (d.cell) pressCell(+d.cell);
+  else if ('reset' in d) resetLights();
+  else if (d.dial) turnDial(+d.dial, +d.dir);
+  else if ('pull' in d) pullLever();
+});
+
+const NOTE = `<div class="paper">
+  <p>هر کس این را می‌خواند،</p>
+  <p>ساعت این اتاق درست در لحظه‌ای ایستاد که رمز گاوصندوق را عوض کردم. همان لحظه را چهار رقمی به خاطر سپردم.</p>
+  <p>گاوصندوق را جایی گذاشتم که هیچ‌کس نگاه نمی‌کند: پشت زیباترین چیز اتاق.</p>
+  <p class="sign">م.</p></div>`;
+const SCROLL = `<div class="paper"><div class="rainbow" aria-hidden="true"></div>
+  <p>رنگ‌هایی که در رنگین‌کمان نیستند دروغ می‌گویند.</p>
+  <p>رنگین‌کمان را از بالا به پایین بخوان؛ قفسه‌ی کتاب رمز در را می‌داند.</p></div>`;
+const NOTEBOOK = `<h2>دفترچه‌ی تلگراف‌چی</h2><div class="paper">
+  <p>نقطه یعنی نور کوتاه، خط یعنی نور بلند. هر عدد پنج علامت دارد. بین عددها مکث کوتاهی است و بعد از هر پیام، مکثی طولانی.</p>
+  <div class="morse">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<div><b>${fa(d)}</b><span>${MORSE[d].replace(/\./g, '●').replace(/-/g, '▬')}</span></div>`).join('')}</div></div>`;
+const RIDDLE = `<h2>کاغذ زیر ساعت شنی</h2><div class="paper">
+  <p>عددی سه‌رقمی را در نظر بگیر: رقم صدگانش دو برابر رقم یکان است، رقم دهگانش برابر مجموع آن دو، و جمع هر سه رقم ۱۲ می‌شود.</p>
+  <p>هر رقم، شماره‌ی خانه‌ی یک سیاره از خورشید است. قفل بزرگ فقط زبان سیاره‌ها را می‌فهمد؛ نمادها را به همان ترتیبی بچین که عدد نوشته می‌شود.</p>
+  <p class="sign">م.</p></div>`;
+
+function openCanvas(title, size, draw, caption) {
+  openModal(`<h2>${title}</h2><canvas class="view" width="${size}" height="${size}"></canvas><p class="caption">${caption}</p>`);
+  draw(sheet.querySelector('canvas').getContext('2d'), size);
+}
+function openPoster() {
+  openModal(`<h2>منظومه‌ی شمسی</h2><p class="sub">شماره‌ها ترتیب فاصله از خورشید است.</p><ol class="planets">${PLANETS.map((p, i) =>
+    `<li><span>${fa(i + 1)}</span><span class="dot" style="background:${p.col}"></span><span>${p.name}</span><span class="sym">${p.sym}</span></li>`).join('')}</ol>`);
+}
+function openKeypad(target) {
+  kp = { target, entry: '', busy: false };
+  const title = { safe: 'گاوصندوق دیواری', door: 'قفل در خروج', locker: 'قفل کمد فلزی' }[target];
+  const keysHtml = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clr', '0', 'del'].map(k =>
+    `<button type="button" data-k="${k}"${k.length > 1 ? ' class="small"' : ''} aria-label="${k === 'clr' ? 'پاک کردن' : k === 'del' ? 'حذف آخرین رقم' : k}">${k === 'clr' ? 'پاک' : k === 'del' ? '⌫' : fa(k)}</button>`).join('');
+  openModal(`<h2>${title}</h2><p class="sub">رمز چهار رقمی را وارد کن.</p>
+    <div class="display" id="kpDisp">${'<span></span>'.repeat(4)}</div>
+    <p class="kp-msg" id="kpMsg"></p><div class="pad">${keysHtml}</div>`);
+}
+function kpRender() {
+  const spans = $('#kpDisp').children;
+  for (let i = 0; i < 4; i++) spans[i].textContent = kp.entry[i] ? fa(kp.entry[i]) : '';
+}
+function kpPress(k) {
+  if (!kp || kp.busy) return;
+  if (k === 'clr') kp.entry = '';
+  else if (k === 'del') kp.entry = kp.entry.slice(0, -1);
+  else if (kp.entry.length < 4) { kp.entry += k; click(500 + Number(k) * 35); }
+  kpRender();
+  if (kp.entry.length === 4) kpSubmit();
+}
+function fail(msgEl, shakeEl, text) {
+  msgEl.textContent = text; msgEl.className = 'kp-msg bad'; buzz();
+  shakeEl.classList.remove('shake'); void shakeEl.offsetWidth; shakeEl.classList.add('shake');
+}
+function succeed(msgEl, text, then) {
+  msgEl.textContent = text; msgEl.className = 'kp-msg ok'; chime();
+  setTimeout(() => { closeModal(); then(); }, 700);
+}
+function kpSubmit() {
+  const target = kp.target;
+  kp.busy = true;
+  if (kp.entry === CODES[target]) return succeed($('#kpMsg'), 'باز شد!', () => unlock(target));
+  fail($('#kpMsg'), $('#kpDisp'), 'رمز اشتباه است.');
+  setTimeout(() => { if (!kp) return; kp.entry = ''; kp.busy = false; kpRender(); }, 700);
+}
+function unlock(target) {
+  thunk();
+  if (target === 'safe') { state.safe = true; toast('در گاوصندوق باز شد. چیزی داخلش برق می‌زند.'); }
+  else if (target === 'locker') { state.lockerOpen = true; toast('در کمد باز شد.'); }
+  else { state.door = true; setLed(true); busy = true; setTimeout(toRoom2, 1500); }
+}
+
+// power panel: each switch flips itself and its orthogonal neighbours
+function openLights() {
+  openModal(`<h2>تابلوی برق</h2><p class="sub">همه‌ی لامپ‌ها باید روشن شوند. هر کلید، خودش و همسایه‌های چسبیده‌اش را برعکس می‌کند.</p>
+    <div class="lights" id="lights">${state.board.map((v, i) => `<button type="button" data-cell="${i}" aria-label="کلید ${fa(i + 1)}" aria-pressed="${!!v}"></button>`).join('')}</div>
+    <p class="kp-msg" id="lMsg"></p><button class="btn ghost" data-reset type="button">از نو</button>`);
+}
+function renderLights() { $('#lights').querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(!!state.board[i]))); }
+function pressCell(i) {
+  if (state.powered) return;
+  const r = Math.floor(i / 3), c = i % 3, b = [...state.board];
+  [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+    const rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < 3 && cc >= 0 && cc < 3) b[rr * 3 + cc] ^= 1;
+  });
+  state.board = b; click(380); renderLights(); updateLights();
+  if (b.every(Boolean)) {
+    state.powered = true;
+    succeed($('#lMsg'), 'برق وصل شد!', () => {
+      updateLights(); thunk();
+      toast('چراغ‌ها روشن شدند و فانوس گوشه‌ی اتاق شروع به چشمک زدن کرد.', 5000);
+    });
+  }
+}
+function resetLights() { if (state.powered) return; state.board = [...LIGHTS_START]; renderLights(); updateLights(); click(200); }
+
+function openMorse() {
+  openModal('<h2>فانوس علامت</h2><div class="beacon" id="beacon"></div><p class="caption">فانوس پیامی را بارها و بارها تکرار می‌کند.</p>');
+  const token = morseToken = {};
+  let last = -1;
+  const tick = () => {
+    if (morseToken !== token) return;
+    const i = morseAt(performance.now() / 1000);
+    if (i !== last) {
+      last = i;
+      $('#beacon').classList.toggle('on', !!SEG[i][0]);
+      if (SEG[i][0]) beepFor(SEG[i][1]);
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function openVault() {
+  openModal(`<h2>قفل در گاوصندوقی</h2><p class="sub">سه نماد را بچین و اهرم را بکش.</p>
+    <div class="dials" id="dials">${[0, 1, 2].map(i => `<div class="dial">
+      <button type="button" data-dial="${i}" data-dir="1" aria-label="نماد بعدی">▲</button>
+      <span class="sym" id="dial${i}">${DIAL[state.dials[i]]}</span>
+      <button type="button" data-dial="${i}" data-dir="-1" aria-label="نماد قبلی">▼</button></div>`).join('')}</div>
+    <p class="kp-msg" id="vMsg"></p><button class="btn" type="button" data-pull style="align-self:center">کشیدن اهرم</button>`);
+}
+function turnDial(i, dir) {
+  const d = [...state.dials];
+  d[i] = (d[i] + dir + DIAL.length) % DIAL.length;
+  state.dials = d; $('#dial' + i).textContent = DIAL[d[i]]; click(300 + i * 80);
+}
+function pullLever() {
+  if (state.vault) return;
+  if (state.dials.every((v, i) => DIAL[v] === VAULT[i])) {
+    state.vault = true; busy = true;
+    succeed($('#vMsg'), 'چرخ‌دنده‌ها چرخیدند…', () => { thunk(); setTimeout(win, 1800); });
+  } else fail($('#vMsg'), $('#dials'), 'اهرم تکان نخورد.');
+}
+
+/* ---------- rooms & progress ---------- */
+function toRoom2() {
+  $('#fade').dataset.on = '1';
+  setTimeout(() => {
+    state.room = 1; enter();
+    updateLights(); updateTimer(true);
+    $('#fade').removeAttribute('data-on'); busy = false;
+    toast('اتاق دوم: رصدخانه‌ی متروک. در پشت سرت قفل شد و برق هم قطع است.', 5500);
+  }, 900);
+}
+function act(id) {
+  if (id.startsWith('book:')) {
+    const b = BOOKS.find(x => 'book:' + x.id === id);
+    click(300); return toast(`کتاب ${b.name}. روی عطفش نوشته: ${fa(b.n)}`);
+  }
+  switch (id) {
+    // room 1
+    case 'note': state.noteRead = true; return openModal(NOTE);
+    case 'clock': return openCanvas('ساعت دیواری', 600, drawClock, 'عقربه‌ها دیگر تکان نمی‌خورند.');
+    case 'painting':
+      if (state.painting) return toast('یک منظره‌ی کوهستانی. پشتش دیگر چیزی نیست.');
+      state.painting = true; thunk();
+      return toast('تابلو را کنار زدی. پشتش یک گاوصندوق دیواری است!');
+    case 'safe':
+      if (!state.safe) return openKeypad('safe');
+      return toast(state.keyTaken ? 'گاوصندوق خالی است.' : 'یک کلید برنجی داخل گاوصندوق است.');
+    case 'key':
+      state.keyTaken = true; key.visible = false; updateInv(); chime();
+      return toast('کلید برنجی را برداشتی.');
+    case 'chest':
+      if (state.chest) return toast('صندوقچه باز است.');
+      if (!state.keyTaken) return toast('صندوقچه قفل است. قفلش برنجی است.');
+      state.chest = true; updateInv(); thunk();
+      return toast('کلید در قفل چرخید و در صندوقچه باز شد.');
+    case 'scroll': state.scrollRead = true; return openModal(SCROLL);
+    case 'door': return toast(state.door ? 'در باز است!' : 'در قفل است. کنارش یک صفحه‌کلید هست.');
+    case 'doorpad': return state.door ? toast('در باز است!') : openKeypad('door');
+    // room 2
+    case 'entry': return toast('در پشت سرت قفل شده. راه برگشتی نیست.');
+    case 'panel': return state.powered ? toast('برق وصل است. همه‌ی کلیدها روشن‌اند.') : openLights();
+    case 'lantern': return state.powered ? openMorse() : toast('فانوس خاموش است. برق به آن نمی‌رسد.');
+    case 'notebook': return openModal(NOTEBOOK);
+    case 'locker':
+      if (state.lockerOpen) return toast(state.lensTaken ? 'کمد خالی است.' : 'روی طبقه‌ی کمد یک عدسی شیشه‌ای است.');
+      return state.powered ? openKeypad('locker') : toast('صفحه‌کلید کمد خاموش است. برق ندارد.');
+    case 'lens':
+      state.lensTaken = true; lens.visible = false; updateInv(); chime();
+      return toast('عدسی تلسکوپ را برداشتی.');
+    case 'telescope':
+      if (!state.lensPlaced) {
+        if (!state.lensTaken) return toast('عدسی تلسکوپ گم شده. از داخلش چیزی دیده نمی‌شود.');
+        state.lensPlaced = true; updateInv(); updateLights(); thunk();
+      }
+      state.skySeen = true;
+      return openCanvas('از چشمی تلسکوپ', 600, drawSky, 'چند ستاره‌ی درخشان شکلی آشنا ساخته‌اند.');
+    case 'hourglass':
+      if (!state.skySeen && !state.paperFound) return toast('یک ساعت شنی سنگین روی کمد. شنش ته نشسته.');
+      state.paperFound = true; return openModal(RIDDLE);
+    case 'poster': return openPoster();
+    case 'vault': return state.vault ? null : openVault();
+  }
+}
+
+const HINTS = {
+  note: ['روی میز کار یک یادداشت هست. بخوانش.'],
+  painting: ['«زیباترین چیز اتاق» روی دیوار سمت چپ آویزان است.', 'روی تابلوی نقاشی بزن تا کنار برود.'],
+  safe: ['ساعت دیواری را از نزدیک ببین. ساعت و دقیقه را پشت هم بنویس.', 'ساعت روی ۱۲:۲۵ ایستاده؛ رمز گاوصندوق ۱۲۲۵ است.'],
+  key: ['چیزی داخل گاوصندوق برق می‌زند. برش دار.'],
+  chest: ['قفل صندوقچه‌ی چوبی برنجی است، درست مثل کلیدت.'],
+  scroll: ['داخل صندوقچه یک طومار هست.'],
+  door: ['روی کتاب‌های قفسه بزن. فقط رنگ‌های رنگین‌کمان حساب‌اند و از بالای رنگین‌کمان شروع کن.', 'قرمز ۳، زرد ۸، سبز ۱، آبی ۷؛ رمز در ۳۸۱۷ است.'],
+  power: ['تابلوی برق روی دیوار چپ است. همه‌ی لامپ‌هایش باید روشن شوند.', 'دکمه‌ی «از نو» را بزن، بعد کلیدهای بالا-چپ، بالا-راست، وسط و پایین-وسط را هر کدام یک بار بزن.'],
+  locker: ['فانوس گوشه‌ی اتاق با نور حرف می‌زند. دفترچه‌ی روی میز الفبایش را دارد.', 'نور کوتاه نقطه است و نور بلند خط. پیام فانوس ۷۲۹۴ است.'],
+  lens: ['روی طبقه‌ی کمد فلزی یک عدسی هست.'],
+  scope: ['عدسی مال تلسکوپ کنار پنجره است. با آن به آسمان نگاه کن.'],
+  paper: ['ستاره‌ها شکل یکی از اشیای همین اتاق را کشیده‌اند.', 'صورت فلکی شکل ساعت شنی است. ساعت شنی روی کمد کنار دیوار راست را بردار.'],
+  vault: ['عدد معما را پیدا کن. هر رقمش شماره‌ی یک سیاره در پوستر منظومه‌ی شمسی است.', 'عدد ۴۶۲ است: مریخ ♂، زحل ♄، زهره ♀.'],
+};
+function step() {
+  const s = state;
+  if (s.room === 0) {
+    if (!s.noteRead) return 'note'; if (!s.painting) return 'painting'; if (!s.safe) return 'safe';
+    if (!s.keyTaken) return 'key'; if (!s.chest) return 'chest'; if (!s.scrollRead) return 'scroll'; return 'door';
+  }
+  if (!s.powered) return 'power'; if (!s.lockerOpen) return 'locker'; if (!s.lensTaken) return 'lens';
+  if (!s.skySeen) return 'scope'; if (!s.paperFound) return 'paper'; return 'vault';
+}
+function hint() {
+  const k = step(), list = HINTS[k], n = state.hintsSeen[k] || 0, isNew = n < list.length;
+  if (isNew) { state.hints++; state.hintsSeen = { ...state.hintsSeen, [k]: n + 1 }; updateHintBtn(); }
+  toast(list[Math.min(n, list.length - 1)] + (isNew ? ' (۳۰ ثانیه جریمه)' : ''), 7000);
+}
+function win(restored) {
+  state.won = true; busy = false;
+  const score = Math.round(state.elapsed + state.hints * PENALTY);
+  $('#winText').innerHTML = `زمان فرار: <b>${fmt(state.elapsed)}</b><br>راهنما: <b>${state.hints ? fa(state.hints) + ' بار (+' + fa(state.hints * PENALTY) + ' ثانیه)' : 'هیچ'}</b><br>امتیاز نهایی: <b>${fmt(score)}</b>`;
+  $('#hud').hidden = true; $('#win').hidden = false;
+  if (restored) return;
+  chime();
+  submitScore({ score, time: Math.round(state.elapsed), hints: state.hints });
+}
+
+/* ---------- picking & input ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+const owner = o => { for (; o; o = o.parent) if (o.userData.action) return o; return null; };
+function pick(x, y) {
+  ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObjects(scene.children, true).find(h => shown(h.object));
+}
+let walk = null, pending = null, stuck = 0, hovered = null;
+function setHover(o, x, y) {
+  if (o !== hovered) { glow(hovered, false); glow(o, true); hovered = o; }
+  renderer.domElement.classList.toggle('hot', !!o);
+  labelEl.hidden = !o;
+  if (o) { labelEl.textContent = o.userData.label; labelEl.style.left = x + 'px'; labelEl.style.top = y + 'px'; }
+}
+function handleTap(x, y) {
+  const hit = pick(x, y); if (!hit) return;
+  const it = owner(hit.object);
+  if (it) {
+    if (hit.distance <= REACH) act(it.userData.action);
+    else { walk = { x: hit.point.x, z: hit.point.z }; pending = { id: it.userData.action, point: hit.point.clone() }; stuck = 0; }
+  } else if (hit.object.userData.floor) { walk = { x: hit.point.x, z: hit.point.z }; pending = null; stuck = 0; }
+}
+const playing = () => state.started && !state.won && !busy;
+
+const cv = renderer.domElement;
+let down = null;
+cv.addEventListener('pointerdown', e => {
+  if (!playing()) return;
+  audio();
+  down = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: false };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (!playing()) return;
+  if (down && e.pointerId === down.id) {
+    if (!down.drag && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) { down.drag = true; setHover(null); }
+    if (down.drag) {
+      const k = e.pointerType === 'touch' ? 0.006 : 0.0045;
+      yaw -= (e.clientX - down.lx) * k;
+      pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY - down.ly) * k));
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+  } else if (e.pointerType === 'mouse' && !modalOpen) {
+    const hit = pick(e.clientX, e.clientY);
+    setHover(hit ? owner(hit.object) : null, e.clientX, e.clientY);
+  }
+});
+cv.addEventListener('pointerup', e => {
+  if (down && e.pointerId === down.id && !down.drag && playing()) handleTap(e.clientX, e.clientY);
+  down = null;
+});
+cv.addEventListener('pointercancel', () => { down = null; });
+cv.addEventListener('pointerleave', () => { if (!down) setHover(null); });
+
+const keys = new Set();
+addEventListener('keydown', e => {
+  if (modalOpen) {
+    if (e.key === 'Escape') closeModal();
+    else if (kp) {
+      if (/^[0-9]$/.test(e.key)) kpPress(e.key);
+      else if (FA.includes(e.key)) kpPress(String(FA.indexOf(e.key)));
+      else if (e.key === 'Backspace') kpPress('del');
+    }
+    return;
+  }
+  if (e.code.startsWith('Arrow')) e.preventDefault();
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+/* ---------- movement ---------- */
+function free(x, z) {
+  const room = ROOMS[state.room], lx = x - room.x0;
+  if (Math.abs(lx) > 3.65 || Math.abs(z) > 3.65) return false;
+  return !room.colliders.some(([a, b, c, d]) => lx > a - R && lx < b + R && z > c - R && z < d + R);
+}
+function tryMove(dx, dz) {
+  const p = camera.position;
+  if (free(p.x + dx, p.z)) p.x += dx;
+  if (free(p.x, p.z + dz)) p.z += dz;
+}
+const held = (...c) => c.some(k => keys.has(k));
+function move(dt) {
+  const f = held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown'), s = held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft');
+  const p = camera.position;
+  if (f || s) {
+    walk = pending = null;
+    const v = SPEED * dt / Math.hypot(f, s);
+    tryMove((-Math.sin(yaw) * f + Math.cos(yaw) * s) * v, (-Math.cos(yaw) * f - Math.sin(yaw) * s) * v);
+    return;
+  }
+  if (!walk) return;
+  if (pending && p.distanceTo(pending.point) <= REACH - 0.15) { const id = pending.id; walk = pending = null; return act(id); }
+  const dx = walk.x - p.x, dz = walk.z - p.z, d = Math.hypot(dx, dz);
+  const giveUp = () => { if (pending) toast('از اینجا دستت نمی‌رسد. از سمت دیگری نزدیک شو.'); walk = pending = null; };
+  if (d < 0.05) return giveUp();
+  const stepLen = Math.min(d, SPEED * dt), ox = p.x, oz = p.z;
+  tryMove(dx / d * stepLen, dz / d * stepLen);
+  if (Math.hypot(p.x - ox, p.z - oz) < stepLen * 0.3) { if (++stuck > 8) giveUp(); } else stuck = 0;
+}
+
+/* ---------- loop ---------- */
+const timer = new THREE.Clock();
+let lanternOn = -1;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(timer.getDelta(), 0.05);
+  if (!state.started) yaw += dt * 0.06;
+  else if (!state.won) { state.elapsed += dt; updateTimer(); if (!modalOpen && !busy) move(dt); }
+  for (const a of anims) {
+    const t = a.target();
+    if (a.p !== t) { a.p += Math.sign(t - a.p) * Math.min(Math.abs(t - a.p), dt * 1.4); a.apply(ease(a.p)); }
+  }
+  const lit = state.powered ? SEG[morseAt(performance.now() / 1000)][0] : 0;
+  if (lit !== lanternOn) {
+    lanternOn = lit;
+    setEm(lanternGlass, lit ? 0xff5a40 : 0x8a2a20, lit ? 0xff3020 : 0x220500);
+    lanternLight.intensity = lit ? 1.3 : 0;
+  }
+  camera.rotation.set(pitch, yaw, 0);
+  renderer.render(scene, camera);
+}
+
+function enter(view) {
+  state.started = true;
+  $('#intro').hidden = true; $('#win').hidden = true; $('#hud').hidden = false;
+  const sp = ROOMS[state.room].spawn;
+  camera.position.set(view ? view.x : sp.x, EYE, view ? view.z : sp.z);
+  yaw = view ? view.yaw : 0; pitch = view ? view.pitch : -0.05;
+  walk = pending = null;
+}
+$('#startBtn').addEventListener('click', () => {
+  enter(); setMusic(music.on);
+  toast('اشیای اتاق را بررسی کن. روی زمین بزن تا آنجا بروی.');
+});
+$('#againBtn').addEventListener('click', () => {
+  $('#nameForm').hidden = true; board.pending = null;
+  applyState({ started: true }); enter(); setMusic(music.on);
+  toast('اتاق‌ها دوباره قفل شدند. موفق باشی!');
+});
+$('#hintBtn').addEventListener('click', hint);
+$('#musicBtn').addEventListener('click', () => setMusic(!music.on));
+
+async function start(data) {
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load('700 58px Vazirmatn', FA + 'منظومه'), document.fonts.load('64px Lalezar', 'منظومه'), document.fonts.load('44px "Noto Sans Symbols"', '☿♀⊕♂♃♄♅♆')]),
+      new Promise(r => setTimeout(r, 1800)),
+    ]);
+  } catch (e) { /* draw with fallback fonts */ }
+  build(); makeAnims();
+  const saved = data && data.state;
+  applyState(saved || {});
+  $('#musicBtn').setAttribute('aria-pressed', String(music.on));
+  $('#musicBtn').textContent = music.on ? '♪ موسیقی' : '♪ بی‌صدا';
+  if (saved && saved.started) {
+    enter(data.view);
+    setMusic(music.on);
+    if (saved.won) win(true);
+    else if (saved.vault) { busy = true; setTimeout(win, 600); }
+    else if (saved.door && saved.room === 0) { busy = true; setTimeout(toRoom2, 600); }
+  }
+  initBoard();
+  frame();
+}
+window.claude?.hot?.snapshot?.(() => ({
+  state: { ...state },
+  view: { x: camera.position.x, z: camera.position.z, yaw, pitch },
+}));
+const hot = window.claude?.hot;
+hot?.ready ? hot.ready(start) : start(hot?.data ?? {});
+})();
+</script>

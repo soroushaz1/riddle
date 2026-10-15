@@ -1,0 +1,19 @@
+[Unit]
+Description=Sleeping Clock Room leaderboard
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/riddlegame/scores.py
+Environment=PORT=51860
+DynamicUser=yes
+StateDirectory=riddlegame
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
